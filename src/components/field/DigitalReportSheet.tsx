@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { WorkOrder, TechnicalReport, MaterialItem } from '../../types';
+import { WorkOrder, TechnicalReport, MaterialItem, SparePart } from '../../types';
 import { formatCOP, formatDate } from '../../utils/formatters';
 import { BrandLogo } from '../BrandLogo';
 import { SignatureCanvas } from '../common/SignatureCanvas';
@@ -13,28 +13,53 @@ import {
   AlertTriangle,
   Plus,
   Trash2,
-  Camera,
   Printer,
   Save,
   ShieldCheck,
   QrCode,
   ArrowLeft,
+  RotateCcw,
+  X,
+  User,
+  Building,
+  MapPin,
+  Phone,
+  Calendar,
+  DollarSign,
+  Info,
 } from 'lucide-react';
 
 interface DigitalReportSheetProps {
   order: WorkOrder;
   onSaveReport: (orderId: string, report: TechnicalReport) => void;
   onBack: () => void;
+  spareParts?: SparePart[];
 }
 
 export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
   order,
   onSaveReport,
   onBack,
+  spareParts = INVENTORY_SPARE_PARTS,
 }) => {
   const existingReport = order.technicalReport;
 
-  // Form State
+  // 1. Datos del Empleado / Técnico que realiza la visita
+  const [technicianName, setTechnicianName] = useState(
+    existingReport?.technicianName || order.assignedTechnicianName || 'Ing. Carlos Andrés Restrepo'
+  );
+  const [technicianDocument, setTechnicianDocument] = useState(
+    existingReport?.technicianDocument || 'CC 1.020.485.932 - TE-048591 (CONTE)'
+  );
+  const [technicianSpecialty, setTechnicianSpecialty] = useState(
+    'Técnico Especialista en Equipos de Presión y Bombeo Hidráulico'
+  );
+  const [visitDate, setVisitDate] = useState(
+    existingReport?.date || order.scheduledDate || new Date().toISOString().split('T')[0]
+  );
+  const [visitTime, setVisitTime] = useState(order.scheduledTime || '09:00 AM');
+
+  // Datos del Equipo Hidráulico
   const [equipmentType, setEquipmentType] = useState(existingReport?.equipmentType || order.equipmentType);
   const [brand, setBrand] = useState(existingReport?.brand || order.brand);
   const [model, setModel] = useState(existingReport?.model || order.model);
@@ -44,7 +69,7 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
     existingReport?.voltagePhase || 'Trifásico 220V'
   );
 
-  // Technical readings
+  // 2. Diagnóstico de Hallazgos y Mediciones Técnicas en Operación
   const [suctionPressurePsi, setSuctionPressurePsi] = useState<number>(existingReport?.suctionPressurePsi ?? 4);
   const [dischargePressurePsi, setDischargePressurePsi] = useState<number>(existingReport?.dischargePressurePsi ?? 68);
   const [ampPhaseR, setAmpPhaseR] = useState<number>(existingReport?.ampPhaseR ?? 29.8);
@@ -63,8 +88,12 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
 
   const [diagnosticDetails, setDiagnosticDetails] = useState(
     existingReport?.diagnosticDetails ||
-      'Desgaste severo en pistas de rodamiento y sello mecánico por cavitación leve y sobrecorriente.'
+      (order.reportedIssue
+        ? `Hallazgos técnicos: ${order.reportedIssue}. Se evidencia desgaste mecánico y desbalance de presión en el cabezal.`
+        : 'Desgaste severo en pistas de rodamiento y sello mecánico por cavitación leve y sobrecorriente.')
   );
+
+  // 3. Detalle del Trabajo Realizado y Recomendaciones
   const [workPerformed, setWorkPerformed] = useState(
     existingReport?.workPerformed ||
       'Desmontaje de cabezal, cambio de rodamientos SKF Explorer C3, instalación de sello mecánico de carburo de silicio, alineación láser y pruebas de presión estática/dinámica.'
@@ -74,7 +103,8 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
       'Verificar rampa de aceleración en variador de frecuencia (VFD) y realizar chequeo de vibración en 15 días.'
   );
 
-  // Materials Used
+  // 4. Repuestos Instalados y Costo de la Visita
+  const [laborCostCOP, setLaborCostCOP] = useState<number>(180000);
   const [materials, setMaterials] = useState<MaterialItem[]>(
     existingReport?.materialsUsed || [
       {
@@ -94,21 +124,24 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
         unit: 'JGO',
         unitPriceCOP: 165000,
         totalCOP: 330000,
-      }
+      },
     ]
   );
 
-  const [selectedInventoryPartId, setSelectedInventoryPartId] = useState(INVENTORY_SPARE_PARTS[0].id);
+  const [selectedInventoryPartId, setSelectedInventoryPartId] = useState(
+    spareParts[0]?.id || INVENTORY_SPARE_PARTS[0].id
+  );
 
-  // Signatures
+  // 5. Firma Digital de Conformidad
   const [clientSignerName, setClientSignerName] = useState(existingReport?.clientNameSigner || order.clientContact);
   const [clientSignerDoc, setClientSignerDoc] = useState(existingReport?.clientDocumentSigner || 'CC 52.890.114');
-  const [clientSignerRole, setClientSignerRole] = useState(existingReport?.clientRoleSigner || 'Administradora Titular');
+  const [clientSignerRole, setClientSignerRole] = useState(existingReport?.clientRoleSigner || 'Administrador / Encargado');
   const [clientSignatureUrl, setClientSignatureUrl] = useState(existingReport?.clientSignatureDataUrl || '');
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleAddMaterial = () => {
-    const part = INVENTORY_SPARE_PARTS.find((p) => p.id === selectedInventoryPartId);
+    const part = spareParts.find((p) => p.id === selectedInventoryPartId);
     if (!part) return;
 
     const newItem: MaterialItem = {
@@ -116,7 +149,7 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
       name: part.name,
       code: part.code,
       quantity: 1,
-      unit: 'UND',
+      unit: part.unit || 'UND',
       unitPriceCOP: part.unitPriceCOP,
       totalCOP: part.unitPriceCOP,
     };
@@ -128,13 +161,31 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
     setMaterials(materials.filter((m) => m.id !== id));
   };
 
+  // Botón LIMPIAR: resetea campos de reporte y borra la firma
+  const handleClearForm = () => {
+    setDiagnosticDetails('');
+    setWorkPerformed('');
+    setRecommendations('');
+    setMaterials([]);
+    setLaborCostCOP(0);
+    setSuctionPressurePsi(0);
+    setDischargePressurePsi(0);
+    setAmpPhaseR(0);
+    setAmpPhaseS(0);
+    setAmpPhaseT(0);
+    setVibrationMmS(0);
+    setClientSignatureUrl('');
+    setShowClearConfirm(false);
+  };
+
+  // Botón GUARDAR & CERTIFICAR
   const handleSave = () => {
     const report: TechnicalReport = {
       id: existingReport?.id || `rep-${Date.now()}`,
       orderId: order.id,
-      date: new Date().toISOString().split('T')[0],
-      technicianName: order.assignedTechnicianName || 'Ing. Carlos Andrés Restrepo',
-      technicianDocument: 'CC 1.020.485.932 - TE-048591 (CONTE)',
+      date: visitDate,
+      technicianName,
+      technicianDocument,
       equipmentType,
       brand,
       model,
@@ -162,7 +213,7 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
       approvalStatus: 'PENDIENTE_VALIDACION',
       photoEvidenceUrls: [
         'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
-        'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=600&q=80'
+        'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=600&q=80',
       ],
     };
 
@@ -172,45 +223,62 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
   };
 
   const totalMaterialsCostCOP = materials.reduce((acc, m) => acc + m.totalCOP, 0);
+  const grandTotalCostCOP = totalMaterialsCostCOP + (laborCostCOP || 0);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3">
+      {/* Top Action Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm w-full max-w-full">
+        <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
           <button
             onClick={onBack}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 transition-colors"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 transition-colors shrink-0 mt-0.5 sm:mt-0"
+            title="Volver"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-slate-900 dark:text-white">
-                Hoja de Reporte Digital & Acta de Entrega
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-white leading-tight">
+                Hoja de Reporte Digital & Acta Técnica
               </h1>
-              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
-                {order.orderNumber}
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white shrink-0">
+                OT: {order.orderNumber}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Cliente: <strong>{order.clientName}</strong> • {order.clientAddress}
+            <p className="text-xs text-slate-500 mt-0.5 truncate">
+              Cliente: <strong className="text-slate-700 dark:text-slate-300">{order.clientName}</strong> • {order.clientAddress}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* 3 Main Action Buttons: Limpiar, Cancelar, Guardar & Certificar */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Botón Limpiar */}
           <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 transition-colors"
+            type="button"
+            onClick={() => setShowClearConfirm(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-xl hover:bg-amber-100 transition-colors"
           >
-            <Printer className="w-4 h-4" />
-            Imprimir Acta
+            <RotateCcw className="w-3.5 h-3.5" />
+            Limpiar
           </button>
 
+          {/* Botón Cancelar */}
           <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            <X className="w-3.5 h-3.5 text-rose-500" />
+            Cancelar
+          </button>
+
+          {/* Botón Guardar & Certificar */}
+          <button
+            type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-600/30 transition-transform active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-600/30 transition-transform active:scale-95 flex-1 sm:flex-initial justify-center"
           >
             <Save className="w-4 h-4" />
             Guardar & Certificar
@@ -218,13 +286,37 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
         </div>
       </div>
 
+      {/* Confirmation Modal for Limpiar */}
+      {showClearConfirm && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 rounded-2xl text-xs space-y-2">
+          <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            ¿Deseas limpiar todos los campos editados del reporte y borrar la firma?
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleClearForm}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold"
+            >
+              Sí, Limpiar Formulario
+            </button>
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg font-bold"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {isSavedSuccessfully && (
         <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-2xl text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center gap-3 animate-fadeIn shadow-lg">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <div>
-            <div className="text-sm font-black">¡Ficha Técnica Guardada Exitosamente!</div>
+            <div className="text-sm font-black">¡Ficha Técnica Guardada y Certificada!</div>
             <div className="text-[11px] font-normal opacity-90">
-              Se ha emitido una notificación automática al Administrador y se ha pre-generado la factura electrónica DIAN para su auditoría y visto bueno final.
+              Se ha guardado el diagnóstico, detalle de trabajo, repuestos y firma digital. La orden ha sido actualizada y se notificó a Administración.
             </div>
           </div>
         </div>
@@ -239,20 +331,105 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
         <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
           <BrandLogo size="md" showText={true} textVariant="full" theme="dark" />
           <div className="text-right text-xs text-slate-500 space-y-0.5">
-            <div className="font-bold text-slate-900 dark:text-white">NIT: 901.458.720-3</div>
+            <div className="font-bold text-slate-900 dark:text-white">NIT: 901.458.720-3 • ALE. TECNINSTALER S.A.S.</div>
             <div>PBX: (601) 745-9000 • Sede Bogotá D.C.</div>
-            <div className="text-sky-600 font-semibold">Sistema Hydraulic Precision v3.4</div>
+            <div className="text-emerald-600 dark:text-emerald-400 font-semibold">Sistema Hydraulic Precision v3.4</div>
           </div>
         </div>
 
-        {/* Section 1: Equipment Identification */}
+        {/* 1. SECCIÓN: DATOS DEL CLIENTE */}
         <div className="relative z-10 space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-wider text-sky-700 dark:text-sky-400 flex items-center gap-2">
-            <Wrench className="w-4 h-4" />
-            1. Datos del Equipo Hidráulico Inspeccionado
+          <h3 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+            <Building className="w-4 h-4" />
+            1. Datos del Cliente & Copropiedad
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <label className="block text-slate-400 text-[10px] font-bold uppercase mb-0.5">Copropiedad / Razón Social:</label>
+              <div className="font-black text-slate-900 dark:text-white text-sm">{order.clientName}</div>
+              <div className="text-[11px] text-slate-500">NIT: {order.clientNit || '901.458.720-3'}</div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <label className="block text-slate-400 text-[10px] font-bold uppercase mb-0.5">Ubicación & Dirección:</label>
+              <div className="font-bold text-slate-900 dark:text-white">{order.clientAddress}</div>
+              <div className="text-[11px] text-slate-500">Barrio: {order.neighborhood}</div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <label className="block text-slate-400 text-[10px] font-bold uppercase mb-0.5">Contacto / Administrador:</label>
+              <div className="font-bold text-slate-900 dark:text-white">{order.clientContact}</div>
+              <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                <Phone className="w-3 h-3 text-emerald-500" />
+                {order.clientPhone}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <label className="block text-slate-400 text-[10px] font-bold uppercase mb-0.5">Tipo de Servicio & OT:</label>
+              <div className="font-mono font-black text-slate-900 dark:text-white">{order.orderNumber}</div>
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">{order.type} • {order.priority}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. SECCIÓN: DATOS DEL EMPLEADO QUE REALIZA LA VISITA */}
+        <div className="relative z-10 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <h3 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+            <User className="w-4 h-4" />
+            2. Datos del Empleado / Técnico que Realiza la Visita
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label className="block text-slate-500 font-semibold mb-1">Nombre del Técnico:</label>
+              <input
+                type="text"
+                value={technicianName}
+                onChange={(e) => setTechnicianName(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-500 font-semibold mb-1">Cédula & Matrícula CONTE:</label>
+              <input
+                type="text"
+                value={technicianDocument}
+                onChange={(e) => setTechnicianDocument(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-500 font-semibold mb-1">Fecha & Hora de Visita:</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={visitDate}
+                  onChange={(e) => setVisitDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                />
+                <input
+                  type="text"
+                  value={visitTime}
+                  onChange={(e) => setVisitTime(e.target.value)}
+                  className="w-24 px-2 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-center"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. SECCIÓN: DATOS DEL EQUIPO HIDRÁULICO */}
+        <div className="relative z-10 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <h3 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+            <Wrench className="w-4 h-4" />
+            3. Datos del Equipo Hidráulico Inspeccionado
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
               <label className="block text-slate-500 font-semibold mb-1">Tipo de Equipo:</label>
               <input
@@ -271,156 +448,81 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
               />
             </div>
-            <div>
-              <label className="block text-slate-500 font-semibold mb-1">Potencia (HP) y No. Serie:</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={hpPower}
-                  onChange={(e) => setHpPower(parseFloat(e.target.value) || 0)}
-                  className="w-24 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
-                  placeholder="HP"
-                />
-                <input
-                  type="text"
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
-                  placeholder="Serial"
-                />
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* Section 2: Technical Field Parameters (Pressures, Electrical & Vibration) */}
+        {/* 4. SECCIÓN: DIAGNÓSTICO DE HALLAZGOS Y CAUSA RAÍZ */}
         <div className="relative z-10 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-          <h3 className="text-xs font-black uppercase tracking-wider text-sky-700 dark:text-sky-400 flex items-center gap-2">
-            <Gauge className="w-4 h-4" />
-            2. Mediciones & Parámetros Técnicos en Operación
+          <h3 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            4. Diagnóstico de Hallazgos & Causa Raíz Encontrada
           </h3>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <label className="block text-slate-500 font-semibold mb-1">P. Succión (PSI):</label>
-              <input
-                type="number"
-                value={suctionPressurePsi}
-                onChange={(e) => setSuctionPressurePsi(parseFloat(e.target.value) || 0)}
-                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent border-b border-sky-400 focus:outline-none"
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">Mínimo sugerido: &gt; 5 PSI</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <label className="block text-slate-500 font-semibold mb-1">P. Descarga (PSI):</label>
-              <input
-                type="number"
-                value={dischargePressurePsi}
-                onChange={(e) => setDischargePressurePsi(parseFloat(e.target.value) || 0)}
-                className="w-full text-base font-bold text-sky-600 dark:text-sky-400 bg-transparent border-b border-sky-400 focus:outline-none"
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">Set point: 65-70 PSI</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <label className="block text-slate-500 font-semibold mb-1">Amperaje R-S-T (A):</label>
-              <div className="flex gap-1">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={ampPhaseR}
-                  onChange={(e) => setAmpPhaseR(parseFloat(e.target.value) || 0)}
-                  className="w-1/3 text-xs font-bold text-slate-900 dark:text-white bg-transparent border-b border-slate-400"
-                  placeholder="R"
-                />
-                <input
-                  type="number"
-                  step="0.1"
-                  value={ampPhaseS}
-                  onChange={(e) => setAmpPhaseS(parseFloat(e.target.value) || 0)}
-                  className="w-1/3 text-xs font-bold text-slate-900 dark:text-white bg-transparent border-b border-slate-400"
-                  placeholder="S"
-                />
-                <input
-                  type="number"
-                  step="0.1"
-                  value={ampPhaseT}
-                  onChange={(e) => setAmpPhaseT(parseFloat(e.target.value) || 0)}
-                  className="w-1/3 text-xs font-bold text-slate-900 dark:text-white bg-transparent border-b border-slate-400"
-                  placeholder="T"
-                />
-              </div>
-              <span className="text-[10px] text-slate-400 mt-1 block">Placa: {nominalAmperage} A</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-              <label className="block text-slate-500 font-semibold mb-1">Vibración (mm/s RMS):</label>
-              <input
-                type="number"
-                step="0.1"
-                value={vibrationMmS}
-                onChange={(e) => setVibrationMmS(parseFloat(e.target.value) || 0)}
-                className={`w-full text-base font-bold bg-transparent border-b focus:outline-none ${
-                  vibrationMmS > 4.5 ? 'text-rose-600 border-rose-500' : 'text-emerald-600 border-emerald-500'
-                }`}
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">ISO 10816: &lt; 2.8 mm/s</span>
-            </div>
+          {/* Campo editable de Diagnóstico de Hallazgos */}
+          <div>
+            <textarea
+              rows={3}
+              value={diagnosticDetails}
+              onChange={(e) => setDiagnosticDetails(e.target.value)}
+              placeholder="Describa los hallazgos técnicos detectados durante la inspección inicial..."
+              className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs leading-relaxed"
+            />
           </div>
         </div>
 
-        {/* Section 3: Diagnostic & Work Done */}
+        {/* 5. SECCIÓN: DETALLE DEL TRABAJO REALIZADO */}
         <div className="relative z-10 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
-          <h3 className="font-black uppercase tracking-wider text-sky-700 dark:text-sky-400 flex items-center gap-2">
+          <h3 className="font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            3. Diagnóstico Técnico & Trabajos Ejecutados
+            5. Detalle del Trabajo Realizado & Recomendaciones
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Diagnóstico de Hallazgos y Causa Raíz:
+                Detalle de Trabajos Realizados, Calibraciones y Pruebas:
               </label>
               <textarea
                 rows={3}
-                value={diagnosticDetails}
-                onChange={(e) => setDiagnosticDetails(e.target.value)}
+                value={workPerformed}
+                onChange={(e) => setWorkPerformed(e.target.value)}
+                placeholder="Describa los trabajos ejecutados paso a paso..."
                 className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Detalle de Trabajos Realizados y Pruebas:
+                Recomendaciones Técnicas para la Copropiedad:
               </label>
               <textarea
                 rows={3}
-                value={workPerformed}
-                onChange={(e) => setWorkPerformed(e.target.value)}
+                value={recommendations}
+                onChange={(e) => setRecommendations(e.target.value)}
+                placeholder="Recomendaciones operativas y de mantenimiento preventivo..."
                 className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
               />
             </div>
           </div>
         </div>
 
-        {/* Section 4: Materials & Spare Parts Consumed */}
+        {/* 6. SECCIÓN: REPUESTOS INSTALADOS / COSTO DE LA VISITA */}
         <div className="relative z-10 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
-          <div className="flex items-center justify-between">
-            <h3 className="font-black uppercase tracking-wider text-sky-700 dark:text-sky-400 flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
               <Zap className="w-4 h-4" />
-              4. Registro de Repuestos & Materiales Instalados
+              6. Repuestos Instalados & Costo de la Visita Técnica
             </h3>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
               <select
                 value={selectedInventoryPartId}
                 onChange={(e) => setSelectedInventoryPartId(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs flex-1 sm:max-w-xs min-w-0"
               >
-                {INVENTORY_SPARE_PARTS.map((p) => (
+                {spareParts.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({formatCOP(p.unitPriceCOP)})
+                    {p.name} ({formatCOP(p.unitPriceCOP)}) - Stock: {p.stock}
                   </option>
                 ))}
               </select>
@@ -428,7 +530,7 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
               <button
                 type="button"
                 onClick={handleAddMaterial}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold transition-colors shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Agregar
@@ -436,12 +538,12 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
             </div>
           </div>
 
-          <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-            <table className="w-full text-left">
+          <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-x-auto w-full max-w-full">
+            <table className="w-full text-left min-w-[500px] sm:min-w-full">
               <thead className="bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 uppercase font-bold">
                 <tr>
                   <th className="py-2 px-3">Código</th>
-                  <th className="py-2 px-3">Descripción</th>
+                  <th className="py-2 px-3">Descripción Repuesto</th>
                   <th className="py-2 px-3 text-center">Cant.</th>
                   <th className="py-2 px-3 text-right">V. Unitario</th>
                   <th className="py-2 px-3 text-right">Total COP</th>
@@ -449,39 +551,79 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {materials.map((mat) => (
-                  <tr key={mat.id}>
-                    <td className="py-2 px-3 font-mono text-slate-500">{mat.code}</td>
-                    <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200">{mat.name}</td>
-                    <td className="py-2 px-3 text-center">{mat.quantity} {mat.unit}</td>
-                    <td className="py-2 px-3 text-right text-slate-600">{formatCOP(mat.unitPriceCOP)}</td>
-                    <td className="py-2 px-3 text-right font-bold text-slate-900 dark:text-white">
-                      {formatCOP(mat.totalCOP)}
-                    </td>
-                    <td className="py-2 px-3 text-center">
-                      <button
-                        onClick={() => handleRemoveMaterial(mat.id)}
-                        className="text-rose-500 hover:text-rose-700"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                {materials.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-4 text-center text-slate-400">
+                      No se registraron repuestos instalados para esta visita.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  materials.map((mat) => (
+                    <tr key={mat.id}>
+                      <td className="py-2 px-3 font-mono text-slate-500">{mat.code}</td>
+                      <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200">{mat.name}</td>
+                      <td className="py-2 px-3 text-center">{mat.quantity} {mat.unit}</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{formatCOP(mat.unitPriceCOP)}</td>
+                      <td className="py-2 px-3 text-right font-bold text-slate-900 dark:text-white">
+                        {formatCOP(mat.totalCOP)}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <button
+                          onClick={() => handleRemoveMaterial(mat.id)}
+                          className="text-rose-500 hover:text-rose-700 p-1"
+                          title="Eliminar repuesto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
-          <div className="flex justify-end font-bold text-slate-900 dark:text-white text-xs">
-            Subtotal Materiales: <span className="ml-2 text-sky-600 font-black">{formatCOP(totalMaterialsCostCOP)}</span>
+          {/* Desglose de Costos de la Visita */}
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+              <div>
+                <label className="block text-slate-500 font-semibold mb-1">Mano de Obra / Tarifa de Visita (COP):</label>
+                <div className="flex items-center gap-1.5">
+                  <DollarSign className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <input
+                    type="number"
+                    step="10000"
+                    value={laborCostCOP}
+                    onChange={(e) => setLaborCostCOP(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="text-right sm:border-l sm:border-slate-200 sm:dark:border-slate-700 sm:pl-4">
+                <span className="text-slate-500 text-xs block">Subtotal Repuestos:</span>
+                <span className="font-bold text-slate-900 dark:text-white text-sm">
+                  {formatCOP(totalMaterialsCostCOP)}
+                </span>
+              </div>
+
+              <div className="text-right sm:border-l sm:border-slate-200 sm:dark:border-slate-700 sm:pl-4">
+                <span className="text-emerald-700 dark:text-emerald-400 font-black text-xs block uppercase tracking-wider">
+                  Costo Total de la Visita:
+                </span>
+                <span className="font-black text-emerald-600 dark:text-emerald-400 text-base">
+                  {formatCOP(grandTotalCostCOP)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Section 5: Digital Signature Capture (Client & Technical Chief) */}
+        {/* 7. SECCIÓN: FIRMA DIGITAL DE CONFORMIDAD */}
         <div className="relative z-10 space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-          <h3 className="text-xs font-black uppercase tracking-wider text-sky-700 dark:text-sky-400 flex items-center gap-2">
+          <h3 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4" />
-            5. Firma Digital de Conformidad del Cliente (Receptor Autorizado)
+            7. Firma Digital de Conformidad del Cliente (Receptor Autorizado)
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -491,7 +633,7 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
                 type="text"
                 value={clientSignerName}
                 onChange={(e) => setClientSignerName(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
               />
             </div>
             <div>
@@ -500,7 +642,7 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
                 type="text"
                 value={clientSignerDoc}
                 onChange={(e) => setClientSignerDoc(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
               />
             </div>
             <div>
@@ -509,7 +651,7 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
                 type="text"
                 value={clientSignerRole}
                 onChange={(e) => setClientSignerRole(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
               />
             </div>
           </div>
@@ -538,11 +680,44 @@ export const DigitalReportSheet: React.FC<DigitalReportSheetProps> = ({
             <QrCode className="w-8 h-8 text-slate-800 dark:text-slate-200" />
             <div className="text-[9px] font-mono">
               VERIFICAR ACTA<br />
-              COD: TI-2026-OT084
+              COD: TI-2026-{order.orderNumber}
             </div>
+          </div>
+        </div>
+
+        {/* Bottom Action Buttons Bar */}
+        <div className="relative z-10 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setShowClearConfirm(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-xl hover:bg-amber-100 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Limpiar Formato
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              <X className="w-4 h-4 text-rose-500" />
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-600/30 transition-transform active:scale-95"
+            >
+              <Save className="w-4 h-4" />
+              Guardar & Certificar
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 };
+

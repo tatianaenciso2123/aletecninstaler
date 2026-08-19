@@ -10,11 +10,10 @@ import {
   CheckCircle2,
   FileEdit,
   MapPin,
-  Compass,
-  Zap,
-  Gauge,
-  ArrowRight,
-  ShieldAlert,
+  FileText,
+  Building,
+  Calendar,
+  X,
 } from 'lucide-react';
 
 interface TechnicianDashboardProps {
@@ -23,7 +22,6 @@ interface TechnicianDashboardProps {
   currentTechId?: string;
   onSelectOrderForReport: (order: WorkOrder) => void;
   onUpdateOrderStatus: (orderId: string, status: any) => void;
-  onOpenHydraulicTools: () => void;
 }
 
 export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
@@ -32,13 +30,13 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
   currentTechId = 'tech-1',
   onSelectOrderForReport,
   onUpdateOrderStatus,
-  onOpenHydraulicTools,
 }) => {
   const currentTech = technicians.find((t) => t.id === currentTechId) || technicians[0];
   const techOrders = orders.filter((o) => o.assignedTechnicianId === currentTech.id);
 
   const [simulatedGpsActive, setSimulatedGpsActive] = useState(false);
   const [navigatingOrderId, setNavigatingOrderId] = useState<string | null>(null);
+  const [viewingRequestOrder, setViewingRequestOrder] = useState<WorkOrder | null>(null);
 
   const handleStartNavigation = (orderId: string) => {
     setNavigatingOrderId(orderId);
@@ -52,30 +50,26 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
       <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-sky-400 text-white font-black text-xl flex items-center justify-center shadow-md">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white font-black text-xl flex items-center justify-center shadow-md">
               {currentTech.fullName.split(' ')[1]?.[0] || 'T'}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-black">{currentTech.fullName}</h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {currentTech.conteLicense}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Especialidad: <span className="text-sky-300 font-semibold">{currentTech.specialty}</span>
+                Especialidad: <span className="text-emerald-300 font-semibold">{currentTech.specialty}</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={onOpenHydraulicTools}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-bold rounded-xl border border-slate-700 transition-colors"
-            >
-              <Gauge className="w-4 h-4 text-sky-400" />
-              Calculadoras Hidráulicas
-            </button>
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300">
+              Operador Técnico de Campo
+            </span>
           </div>
         </div>
 
@@ -117,8 +111,8 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Clock className="w-5 h-5 text-sky-600" />
-            Agenda de Servicios para Hoy ({techOrders.length} OTs)
+            <Clock className="w-5 h-5 text-emerald-600" />
+            Agenda de Servicios para Hoy ({techOrders.length} OTs Asignadas)
           </h2>
           <span className="text-xs text-slate-500">Prioridad operacional</span>
         </div>
@@ -147,7 +141,7 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
                     </span>
                     <span
                       className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                        isEmergency ? 'bg-rose-600 text-white animate-pulse' : 'bg-sky-600 text-white'
+                        isEmergency ? 'bg-rose-600 text-white animate-pulse' : 'bg-emerald-600 text-white'
                       }`}
                     >
                       {order.priority}
@@ -175,7 +169,7 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
                       🔧 {order.equipmentType} ({order.brand} {order.model})
                     </div>
                     <div className="text-slate-600 dark:text-slate-400">
-                      <strong>Diagnóstico preliminar / Falla:</strong> {order.reportedIssue}
+                      <strong>Diagnóstico preliminar / Falla reportada por el cliente:</strong> {order.reportedIssue}
                     </div>
                   </div>
 
@@ -223,7 +217,7 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors"
                     >
                       <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                      Llamar Contacto
+                      Llamar
                     </a>
 
                     <button
@@ -231,23 +225,157 @@ export const TechnicianDashboard: React.FC<TechnicianDashboardProps> = ({
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 text-xs font-semibold rounded-lg transition-colors"
                     >
                       <Navigation className="w-3.5 h-3.5 text-sky-600" />
-                      Iniciar GPS Waze
+                      Waze GPS
                     </button>
                   </div>
 
-                  <button
-                    onClick={() => onSelectOrderForReport(order)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl shadow-md shadow-sky-600/30 transition-transform active:scale-95"
-                  >
-                    <FileEdit className="w-4 h-4" />
-                    Abrir Hoja de Reporte & Firma
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* Ver Formato Llenado por Cliente */}
+                    <button
+                      type="button"
+                      onClick={() => setViewingRequestOrder(order)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-colors"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-sky-500" />
+                      Ver Solicitud Cliente
+                    </button>
+
+                    {/* Abrir Hoja de Reporte */}
+                    <button
+                      type="button"
+                      onClick={() => onSelectOrderForReport(order)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/30 transition-transform active:scale-95"
+                    >
+                      <FileEdit className="w-4 h-4" />
+                      Abrir Hoja de Reporte
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })
         )}
       </div>
+
+      {/* Modal: Formato Diligenciado por el Cliente */}
+      {viewingRequestOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 sm:p-7 max-w-2xl w-full shadow-2xl space-y-4 relative my-8 max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-sky-500/10 text-sky-500 border border-sky-500/30">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                    FORMATO SOLICITUD DE CLIENTE • OT {viewingRequestOrder.orderNumber}
+                  </span>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base mt-0.5">
+                    Detalles de la Visita a Realizar
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingRequestOrder(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="space-y-4 text-xs overflow-y-auto pr-1 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="space-y-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-sky-500" />
+                    Datos de la Copropiedad / Cliente
+                  </div>
+                  <div className="font-black text-slate-900 dark:text-white text-sm">
+                    {viewingRequestOrder.clientName}
+                  </div>
+                  <div className="text-slate-600 dark:text-slate-300 flex items-start gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                    <span>{viewingRequestOrder.clientAddress} • Barrio {viewingRequestOrder.neighborhood}</span>
+                  </div>
+                  <div className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 pt-1">
+                    <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Contacto: <strong>{viewingRequestOrder.clientContact}</strong> ({viewingRequestOrder.clientPhone})</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-sky-500" />
+                    Equipo Hidráulico & Programación
+                  </div>
+                  <div className="font-bold text-slate-900 dark:text-white">
+                    {viewingRequestOrder.equipmentType} ({viewingRequestOrder.brand} {viewingRequestOrder.model})
+                  </div>
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                      Tipo: {viewingRequestOrder.type}
+                    </span>
+                    <span
+                      className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                        viewingRequestOrder.priority === 'EMERGENCIA'
+                          ? 'bg-rose-600 text-white animate-pulse'
+                          : 'bg-emerald-500 text-slate-950'
+                      }`}
+                    >
+                      Prioridad: {viewingRequestOrder.priority}
+                    </span>
+                  </div>
+                  <div className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5 pt-1">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>Visita: <strong>{viewingRequestOrder.scheduledDate}</strong> a las <strong>{viewingRequestOrder.scheduledTime} hrs</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  Descripción de la Falla / Motivo de la Visita (Llenado por el Cliente):
+                </div>
+                <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium leading-relaxed whitespace-pre-wrap">
+                  {viewingRequestOrder.reportedIssue || 'Mantenimiento preventivo e inspección técnica general de presiones.'}
+                </div>
+                {viewingRequestOrder.notes && (
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                    <strong>Notas Adicionales de Administración:</strong> {viewingRequestOrder.notes}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions: Cerrar & Abrir Hoja de Reporte */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewingRequestOrder(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+              >
+                Cerrar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const target = viewingRequestOrder;
+                  setViewingRequestOrder(null);
+                  onSelectOrderForReport(target);
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 active:scale-95 transition-transform"
+              >
+                <FileEdit className="w-4 h-4" />
+                <span>Abrir Hoja de Reporte</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

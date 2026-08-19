@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, WorkOrder, Invoice, CashTransaction, Technician, ClientAccount, TechnicalReport, ThemeColorId, AppNotification } from './types';
+import {
+  UserRole,
+  WorkOrder,
+  Invoice,
+  CashTransaction,
+  Technician,
+  ClientAccount,
+  TechnicalReport,
+  ThemeColorId,
+  AppNotification,
+  SparePart,
+  CompanySettings,
+  AdminProfile,
+} from './types';
 import {
   INITIAL_ORDERS,
   INITIAL_TECHNICIANS,
@@ -7,6 +20,9 @@ import {
   INITIAL_INVOICES,
   INITIAL_CASH_TRANSACTIONS,
   INITIAL_NOTIFICATIONS,
+  INITIAL_COMPANY_SETTINGS,
+  INITIAL_ADMIN_PROFILE,
+  INVENTORY_SPARE_PARTS,
 } from './data/mockData';
 import { LoginPage, AuthUser } from './components/auth/LoginPage';
 import { Navbar } from './components/Navbar';
@@ -21,6 +37,14 @@ import { HydraulicTools } from './components/field/HydraulicTools';
 import { DispatchMap } from './components/field/DispatchMap';
 import { ClientPortal } from './components/client/ClientPortal';
 import { AIPredictivePanel } from './components/ai/AIPredictivePanel';
+import { AdminProfileModal } from './components/admin/AdminProfileModal';
+import { CompanySettingsModal } from './components/admin/CompanySettingsModal';
+import { AcceptRequestModal } from './components/admin/AcceptRequestModal';
+import { RejectRequestModal } from './components/admin/RejectRequestModal';
+import { NotificationDetailModal } from './components/common/NotificationDetailModal';
+import { ServiceRequestModal } from './components/common/ServiceRequestModal';
+import { VisitsCalendar } from './components/common/VisitsCalendar';
+import { WarehouseInventory } from './components/admin/WarehouseInventory';
 import { BrandLogo } from './components/BrandLogo';
 import {
   AlertTriangle,
@@ -138,7 +162,19 @@ export default function App() {
 
   const isDarkMode = currentTheme.startsWith('dark');
 
-  // Theme & Dark Mode synchronization with HTML element
+  // Android Status Bar & System Color Mapping for each theme
+  const THEME_ANDROID_HEX_MAP: Record<ThemeColorId, string> = {
+    'dark-sky': '#020617',
+    'dark-emerald': '#020f0a',
+    'dark-indigo': '#050512',
+    'dark-amber': '#0b0803',
+    'dark-rose': '#0d0305',
+    'dark-oled': '#000000',
+    'light-clean': '#f8fafc',
+    'light-warm': '#faf7f2',
+  };
+
+  // Theme & Dark Mode synchronization with HTML element & Android OS Status Bar
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -146,6 +182,14 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
     document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    // Sync Android Status Bar and Browser Address Bar theme color
+    const targetHex = THEME_ANDROID_HEX_MAP[currentTheme] || (isDarkMode ? '#020617' : '#f8fafc');
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', targetHex);
+    }
+
     try {
       localStorage.setItem('ale_theme_preference', currentTheme);
     } catch {}
@@ -204,12 +248,68 @@ export default function App() {
     } catch {}
   }, [cashTransactions]);
 
+  // Spare Parts, Company Settings & Admin Profile with LocalStorage Persistence
+  const [spareParts, setSpareParts] = useState<SparePart[]>(() => {
+    try {
+      const saved = localStorage.getItem('ale_spare_parts_store');
+      return saved ? JSON.parse(saved) : INVENTORY_SPARE_PARTS;
+    } catch {
+      return INVENTORY_SPARE_PARTS;
+    }
+  });
+
+  const [companySettings, setCompanySettings] = useState<CompanySettings>(() => {
+    try {
+      const saved = localStorage.getItem('ale_company_settings_store');
+      return saved ? JSON.parse(saved) : INITIAL_COMPANY_SETTINGS;
+    } catch {
+      return INITIAL_COMPANY_SETTINGS;
+    }
+  });
+
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(() => {
+    try {
+      const saved = localStorage.getItem('ale_admin_profile_store');
+      return saved ? JSON.parse(saved) : INITIAL_ADMIN_PROFILE;
+    } catch {
+      return INITIAL_ADMIN_PROFILE;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ale_spare_parts_store', JSON.stringify(spareParts));
+    } catch {}
+  }, [spareParts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ale_company_settings_store', JSON.stringify(companySettings));
+    } catch {}
+  }, [companySettings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ale_admin_profile_store', JSON.stringify(adminProfile));
+    } catch {}
+  }, [adminProfile]);
+
+  // Modals state for corporate, warehouse, and detailed views
+  const [showAdminProfileModal, setShowAdminProfileModal] = useState(false);
+  const [showCompanySettingsModal, setShowCompanySettingsModal] = useState(false);
+  const [showServiceRequestModal, setShowServiceRequestModal] = useState(false);
+  const [selectedNotificationForDetail, setSelectedNotificationForDetail] = useState<AppNotification | null>(null);
+
   // Share and History Clean Modal State
   const [showShareCleanModal, setShowShareCleanModal] = useState(false);
   const [copyLinkToast, setCopyLinkToast] = useState(false);
 
   // Field / Tech Selection State
   const [selectedOrderForReport, setSelectedOrderForReport] = useState<WorkOrder | null>(null);
+
+  // Service Request Approval / Rejection Modals State
+  const [selectedOrderToAccept, setSelectedOrderToAccept] = useState<WorkOrder | null>(null);
+  const [selectedOrderToReject, setSelectedOrderToReject] = useState<WorkOrder | null>(null);
 
   // Emergency Modal State
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
@@ -409,7 +509,25 @@ export default function App() {
 
     setInvoices((prev) => [newInvoice, ...prev]);
 
-    // 3. Automatically generate real-time notification for Admin
+    // 3. Automatically adjust stock in Warehouse for each material used
+    if (report.materialsUsed && report.materialsUsed.length > 0) {
+      setSpareParts((prevParts) =>
+        prevParts.map((part) => {
+          const used = report.materialsUsed.find(
+            (m) => m.code === part.sku || m.name.toLowerCase() === part.name.toLowerCase()
+          );
+          if (used) {
+            return {
+              ...part,
+              stock: Math.max(0, part.stock - used.quantity),
+            };
+          }
+          return part;
+        })
+      );
+    }
+
+    // 4. Automatically generate real-time notification for Admin
     const adminNotif: AppNotification = {
       id: `notif-${Date.now()}`,
       title: 'Nueva Ficha Técnica Recibida para Auditoría',
@@ -426,6 +544,138 @@ export default function App() {
     };
 
     setNotifications((prev) => [adminNotif, ...prev]);
+  };
+
+  // Service Request Handler (with Spare Parts Cart & Employee Assignment trigger)
+  const handleCreateServiceRequest = (
+    orderData: Partial<WorkOrder>,
+    cartItems?: { part: SparePart; quantity: number }[]
+  ) => {
+    // 1. Deduct spare parts stock if purchased via cart
+    if (cartItems && cartItems.length > 0) {
+      setSpareParts((prevParts) =>
+        prevParts.map((part) => {
+          const item = cartItems.find((s) => s.part.id === part.id);
+          if (item) {
+            return {
+              ...part,
+              stock: Math.max(0, part.stock - item.quantity),
+            };
+          }
+          return part;
+        })
+      );
+    }
+
+    // 2. Generate Work Order
+    const orderNum = `OT-2026-0${orders.length + 86}`;
+    const orderId = `ot-${Date.now()}`;
+    const partsCost = (cartItems || []).reduce((acc, s) => acc + s.part.unitPriceCOP * s.quantity, 0);
+    const baseServiceCost = orderData.totalCostCOP || (partsCost > 0 ? partsCost : 450000);
+
+    const newOrder: WorkOrder = {
+      id: orderId,
+      orderNumber: orderNum,
+      clientName: orderData.clientName || 'Cliente Solicitante',
+      clientNit: orderData.clientNit || 'NIT-PENDIENTE',
+      clientContact: orderData.clientName || 'Administración',
+      clientPhone: orderData.clientPhone || '300 000 0000',
+      clientEmail: orderData.clientEmail || 'contacto@copropiedad.com',
+      clientAddress: orderData.clientAddress || 'Bogotá D.C.',
+      neighborhood: 'Bogotá Metropolitana',
+      city: 'Bogotá D.C.',
+      coordinates: { lat: 4.711, lng: -74.0721 },
+      equipmentType: orderData.equipmentType || 'Sistema Hidráulico',
+      brand: orderData.brand || 'Barnes / Pedrollo',
+      model: orderData.model || 'Central Hidráulica',
+      hpPower: 10,
+      reportedIssue: orderData.reportedIssue || 'Solicitud de servicio ingresada por cliente.',
+      priority: orderData.priority || 'PROGRAMADO',
+      status: 'PENDIENTE',
+      totalCostCOP: baseServiceCost,
+      scheduledDate: orderData.scheduledDate || new Date().toISOString().split('T')[0],
+      scheduledTime: orderData.scheduledTime || '09:00 AM',
+      assignedTechnicianId: undefined, // Requires Admin or Dispatch to assign employee
+      assignedTechnicianName: undefined,
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+
+    // 3. Real-time notification for Admin to assign employee
+    const newNotif: AppNotification = {
+      id: `notif-${Date.now()}`,
+      title: `Nueva Solicitud: ${newOrder.orderNumber} (${newOrder.priority})`,
+      message: `${newOrder.clientName} ha solicitado servicio de ${newOrder.equipmentType}. Requiere asignación de técnico responsable.`,
+      type: 'SERVICE_REQUESTED',
+      targetRole: 'admin',
+      orderId: orderId,
+      orderNumber: orderNum,
+      timestamp: 'Justo ahora',
+      read: false,
+      actionTab: 'visits_calendar',
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+    setShowServiceRequestModal(false);
+  };
+
+  // Assign Technician & enable digital report sheet
+  const handleAssignTechnician = (orderId: string, techId: string) => {
+    const tech = technicians.find((t) => t.id === techId);
+    const targetOrder = orders.find((o) => o.id === orderId);
+    if (!tech || !targetOrder) return;
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              assignedTechnicianId: techId,
+              assignedTechnicianName: tech.fullName,
+              status: o.status === 'PENDIENTE' ? 'EN_EJECUCION' : o.status,
+            }
+          : o
+      )
+    );
+
+    // Notification for Technician: Report sheet is enabled
+    const techNotif: AppNotification = {
+      id: `notif-tech-${Date.now()}`,
+      title: `Servicio Asignado: ${targetOrder.orderNumber}`,
+      message: `Se te ha asignado el servicio en ${targetOrder.clientName}. La Hoja de Reporte Técnico ha sido habilitada para diligenciamiento.`,
+      type: 'TECH_ASSIGNED',
+      targetRole: 'technician',
+      orderId: orderId,
+      orderNumber: targetOrder.orderNumber,
+      timestamp: 'Justo ahora',
+      read: false,
+      actionTab: 'tech_report',
+    };
+    setNotifications((prev) => [techNotif, ...prev]);
+  };
+
+  // Spare Parts Inventory Handlers
+  const handleAddSparePart = (newPart: Omit<SparePart, 'id'>) => {
+    const part: SparePart = {
+      ...newPart,
+      id: `part-${Date.now()}`,
+    };
+    setSpareParts((prev) => [part, ...prev]);
+  };
+
+  const handleUpdateSparePartById = (id: string, updated: Partial<SparePart>) => {
+    setSpareParts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updated, updatedAt: new Date().toISOString() } : p))
+    );
+  };
+
+  const handleDeleteSparePart = (id: string) => {
+    setSpareParts((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleQuickStockAdjust = (id: string, newStock: number, reason: string) => {
+    setSpareParts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, stock: newStock, updatedAt: new Date().toISOString() } : p))
+    );
   };
 
   // Admin approves technical report and dispatches invoice & copy to client
@@ -503,6 +753,105 @@ export default function App() {
     };
 
     setNotifications((prev) => [techNotif, ...prev]);
+  };
+
+  // Admin Accepts and Schedules Service Request
+  const handleAcceptServiceRequest = (
+    orderId: string,
+    assignedTechId: string,
+    scheduledDate: string,
+    scheduledTime: string,
+    adminNotes?: string
+  ) => {
+    const tech = technicians.find((t) => t.id === assignedTechId);
+    const targetOrder = orders.find((o) => o.id === orderId);
+    if (!targetOrder) return;
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              status: 'PROGRAMADO',
+              requestStatus: 'APROBADA',
+              assignedTechnicianId: assignedTechId,
+              assignedTechnicianName: tech ? tech.fullName : o.assignedTechnicianName,
+              scheduledDate: scheduledDate || o.scheduledDate,
+              scheduledTime: scheduledTime || o.scheduledTime,
+              approvedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+              notes: adminNotes ? `${o.notes ? o.notes + ' | ' : ''}Aprobación: ${adminNotes}` : o.notes,
+            }
+          : o
+      )
+    );
+
+    // 1. Notification to CLIENT
+    const clientNotif: AppNotification = {
+      id: `notif-cli-appr-${Date.now()}`,
+      title: `¡Solicitud Aprobada! ${targetOrder.orderNumber}`,
+      message: `Tu solicitud de servicio para ${targetOrder.equipmentType} ha sido APROBADA. Visita programada para el ${scheduledDate} (${scheduledTime}). Técnico asignado: ${tech ? tech.fullName : 'Cuadrilla Técnica'}.`,
+      type: 'SERVICE_REQUESTED',
+      targetRole: 'client',
+      orderId: orderId,
+      orderNumber: targetOrder.orderNumber,
+      timestamp: 'Justo ahora',
+      read: false,
+      actionTab: 'status',
+    };
+
+    // 2. Notification to TECHNICIAN
+    const techNotif: AppNotification = {
+      id: `notif-tech-appr-${Date.now()}`,
+      title: `Nuevo Servicio Asignado: ${targetOrder.orderNumber}`,
+      message: `Se te ha asignado la orden para ${targetOrder.clientName} (${targetOrder.equipmentType}) programada para el ${scheduledDate} (${scheduledTime}).`,
+      type: 'TECH_ASSIGNED',
+      targetRole: 'technician',
+      orderId: orderId,
+      orderNumber: targetOrder.orderNumber,
+      timestamp: 'Justo ahora',
+      read: false,
+      actionTab: 'tech_agenda',
+    };
+
+    setNotifications((prev) => [clientNotif, techNotif, ...prev]);
+    setSelectedOrderToAccept(null);
+  };
+
+  // Admin Rejects Service Request with description/reason
+  const handleRejectServiceRequest = (orderId: string, rejectionReason: string) => {
+    const targetOrder = orders.find((o) => o.id === orderId);
+    if (!targetOrder) return;
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? {
+              ...o,
+              status: 'RECHAZADA',
+              requestStatus: 'RECHAZADA',
+              rejectionReason: rejectionReason,
+              rejectedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+            }
+          : o
+      )
+    );
+
+    // Notification to CLIENT with exact rejection description
+    const clientNotif: AppNotification = {
+      id: `notif-cli-rej-${Date.now()}`,
+      title: `Solicitud Rechazada: ${targetOrder.orderNumber}`,
+      message: `Motivo: "${rejectionReason}". Puedes ingresar al portal para revisar los detalles o enviar una nueva solicitud ajustada.`,
+      type: 'SERVICE_REQUESTED',
+      targetRole: 'client',
+      orderId: orderId,
+      orderNumber: targetOrder.orderNumber,
+      timestamp: 'Justo ahora',
+      read: false,
+      actionTab: 'status',
+    };
+
+    setNotifications((prev) => [clientNotif, ...prev]);
+    setSelectedOrderToReject(null);
   };
 
   const handleAddCashTransaction = (tx: CashTransaction) => {
@@ -594,6 +943,29 @@ export default function App() {
     );
   };
 
+  // Notification Direct Navigation to Module & Content Handler
+  const handleNavigateFromNotification = (tab: string, meta?: any) => {
+    // 1. Role alignment if notification is role-specific
+    if (meta?.targetRole && meta.targetRole !== 'all') {
+      setCurrentRole(meta.targetRole);
+    }
+
+    // 2. Set target tab
+    setActiveTab(tab);
+
+    // 3. Target order / invoice selection for immediate deep dive
+    if (meta?.orderId || meta?.orderNumber) {
+      const matchedOrder = orders.find(
+        (o) => o.id === meta.orderId || o.orderNumber === meta.orderNumber
+      );
+      if (matchedOrder) {
+        setSelectedOrderForReport(matchedOrder);
+      }
+    }
+
+    setSelectedNotificationForDetail(null);
+  };
+
   // Emergency Modal Submission
   const handleTriggerEmergencySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -638,7 +1010,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200 w-full max-w-full overflow-x-hidden">
       {/* Universal Top Navigation Header */}
       <Navbar
         currentRole={effectiveRole}
@@ -658,14 +1030,14 @@ export default function App() {
         onTriggerEmergency={() => setShowEmergencyModal(true)}
         onLogout={handleLogout}
         onMarkNotificationAsRead={handleMarkNotificationAsRead}
-        onSelectNotification={(notif) => {
-          if (notif.actionTab) setActiveTab(notif.actionTab);
-        }}
+        onSelectNotification={(notif) => setSelectedNotificationForDetail(notif)}
         onOpenShareCleanModal={() => setShowShareCleanModal(true)}
+        onOpenAdminProfile={() => setShowAdminProfileModal(true)}
+        onOpenCompanySettings={() => setShowCompanySettingsModal(true)}
       />
 
       {/* Main Content Viewport */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 w-full max-w-full overflow-x-hidden">
         {/* ======================= ADMIN PILLAR ======================= */}
         {effectiveRole === 'admin' && (
           <>
@@ -675,12 +1047,48 @@ export default function App() {
                 technicians={technicians}
                 clients={clients}
                 invoices={invoices}
-                onOpenNewOrder={() => handleCreateOrder({})}
+                spareParts={spareParts}
+                companySettings={companySettings}
+                adminProfile={adminProfile}
+                onOpenNewOrder={() => setShowServiceRequestModal(true)}
+                onOpenServiceRequest={() => setShowServiceRequestModal(true)}
+                onOpenAdminProfile={() => setShowAdminProfileModal(true)}
+                onOpenCompanySettings={() => setShowCompanySettingsModal(true)}
+                onAcceptRequest={(order) => setSelectedOrderToAccept(order)}
+                onRejectRequest={(order) => setSelectedOrderToReject(order)}
                 onSelectOrder={(order) => {
                   setSelectedOrderForReport(order);
                   setActiveTab('audit_control');
                 }}
                 onSelectTab={(tab) => setActiveTab(tab)}
+              />
+            )}
+
+            {activeTab === 'visits_calendar' && (
+              <VisitsCalendar
+                orders={orders}
+                technicians={technicians}
+                onSelectOrder={(order) => {
+                  setSelectedOrderForReport(order);
+                  setActiveTab('audit_control');
+                }}
+                onAssignTechnician={handleAssignTechnician}
+                onOpenNewVisit={() => setShowServiceRequestModal(true)}
+                onOpenReportSheet={(order) => {
+                  setSelectedOrderForReport(order);
+                  setActiveTab('tech_report');
+                }}
+                currentRole={effectiveRole}
+              />
+            )}
+
+            {activeTab === 'warehouse' && (
+              <WarehouseInventory
+                spareParts={spareParts}
+                onAddSparePart={handleAddSparePart}
+                onUpdateSparePart={handleUpdateSparePartById}
+                onDeleteSparePart={handleDeleteSparePart}
+                onQuickStockAdjust={handleQuickStockAdjust}
               />
             )}
 
@@ -733,16 +1141,7 @@ export default function App() {
               <DispatchMap
                 technicians={technicians}
                 orders={orders}
-                onAssignTechnician={(orderId, techId) => {
-                  const tech = technicians.find((t) => t.id === techId);
-                  setOrders((prev) =>
-                    prev.map((o) =>
-                      o.id === orderId
-                        ? { ...o, assignedTechnicianId: techId, assignedTechnicianName: tech?.fullName }
-                        : o
-                    )
-                  );
-                }}
+                onAssignTechnician={(orderId, techId) => handleAssignTechnician(orderId, techId)}
               />
             )}
 
@@ -758,6 +1157,7 @@ export default function App() {
             {selectedOrderForReport ? (
               <DigitalReportSheet
                 order={selectedOrderForReport}
+                spareParts={spareParts}
                 onSaveReport={(orderId, report) => {
                   handleSaveReport(orderId, report);
                   setSelectedOrderForReport(null);
@@ -777,27 +1177,66 @@ export default function App() {
                   />
                 )}
 
+                {activeTab === 'visits_calendar' && (
+                  <VisitsCalendar
+                    orders={orders}
+                    technicians={technicians}
+                    onSelectOrder={(order) => {
+                      setSelectedOrderForReport(order);
+                      setActiveTab('tech_report');
+                    }}
+                    onAssignTechnician={handleAssignTechnician}
+                    onOpenNewVisit={() => setShowServiceRequestModal(true)}
+                    onOpenReportSheet={(order) => {
+                      setSelectedOrderForReport(order);
+                      setActiveTab('tech_report');
+                    }}
+                    currentRole={effectiveRole}
+                    currentTechId={currentUser?.id}
+                  />
+                )}
+
+                {activeTab === 'warehouse' && (
+                  <WarehouseInventory
+                    spareParts={spareParts}
+                    onAddSparePart={handleAddSparePart}
+                    onUpdateSparePart={handleUpdateSparePartById}
+                    onDeleteSparePart={handleDeleteSparePart}
+                    onQuickStockAdjust={handleQuickStockAdjust}
+                  />
+                )}
+
                 {activeTab === 'tech_report' && (
                   <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 text-center space-y-4 max-w-xl mx-auto">
                     <Wrench className="w-10 h-10 text-sky-600 mx-auto" />
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      Selecciona una Orden de Trabajo para Diligenciar la Hoja de Reporte
+                      Selecciona una Orden de Trabajo Asignada para Diligenciar la Hoja de Reporte
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Puedes abrir cualquier orden de tu agenda diaria para ingresar parámetros técnicos y capturar la firma digital de la copropiedad.
+                      Al tener un servicio asignado, la Hoja de Reporte Técnico queda habilitada para registrar parámetros de presión, voltaje, amperaje, repuestos utilizados y firma del cliente.
                     </p>
                     <div className="space-y-2 text-left pt-2">
                       {orders.map((o) => (
                         <div
                           key={o.id}
                           onClick={() => setSelectedOrderForReport(o)}
-                          className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-sky-500 cursor-pointer flex justify-between items-center text-xs"
+                          className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-sky-500 cursor-pointer flex justify-between items-center text-xs hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                         >
                           <div>
-                            <strong className="text-slate-900 dark:text-white">{o.orderNumber}</strong> • {o.clientName}
-                            <div className="text-slate-500">{o.equipmentType}</div>
+                            <div className="flex items-center gap-2">
+                              <strong className="text-slate-900 dark:text-white">{o.orderNumber}</strong>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                o.priority === 'EMERGENCIA' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400' : 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400'
+                              }`}>
+                                {o.priority}
+                              </span>
+                            </div>
+                            <div className="text-slate-600 dark:text-slate-300 font-medium mt-0.5">{o.clientName}</div>
+                            <div className="text-slate-400 text-[11px]">{o.equipmentType}</div>
                           </div>
-                          <span className="font-bold text-sky-600">Abrir Acta →</span>
+                          <span className="font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-3 py-1.5 rounded-lg border border-sky-200 dark:border-sky-800">
+                            Diligenciar Reporte →
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -824,17 +1263,82 @@ export default function App() {
             client={currentClientAccount}
             orders={orders}
             invoices={invoices}
-            onRequestNewOrder={handleCreateOrder}
+            spareParts={spareParts}
+            onRequestNewOrder={handleCreateServiceRequest}
             onPayInvoice={handleUpdateInvoiceStatus}
-            onOpenCopilot={() => {
-              if (currentUser?.role === 'admin') {
-                setCurrentRole('admin');
-                setActiveTab('predictive_ai');
-              }
-            }}
           />
         )}
       </main>
+
+      {/* ADMIN PROFILE MODAL */}
+      <AdminProfileModal
+        isOpen={showAdminProfileModal}
+        profile={adminProfile}
+        onSaveProfile={(updated) => {
+          setAdminProfile(updated);
+          if (currentUser && currentUser.role === 'admin') {
+            const updatedUser: AuthUser = {
+              ...currentUser,
+              fullName: updated.fullName,
+              email: updated.email,
+              phone: updated.phone,
+              avatarUrl: updated.avatarUrl,
+            };
+            setCurrentUser(updatedUser);
+            try {
+              localStorage.setItem('ale_auth_session', JSON.stringify(updatedUser));
+            } catch {}
+          }
+        }}
+        onClose={() => setShowAdminProfileModal(false)}
+      />
+
+      {/* COMPANY SETTINGS MODAL */}
+      <CompanySettingsModal
+        isOpen={showCompanySettingsModal}
+        settings={companySettings}
+        onSaveSettings={(updated) => setCompanySettings(updated)}
+        onClose={() => setShowCompanySettingsModal(false)}
+      />
+
+      {/* SERVICE REQUEST & SPARE PARTS CART MODAL */}
+      <ServiceRequestModal
+        isOpen={showServiceRequestModal}
+        spareParts={spareParts}
+        onClose={() => setShowServiceRequestModal(false)}
+        onSubmitRequest={handleCreateServiceRequest}
+      />
+
+      {/* NOTIFICATION FULL DETAIL MODAL */}
+      <NotificationDetailModal
+        isOpen={!!selectedNotificationForDetail}
+        notification={selectedNotificationForDetail}
+        orders={orders}
+        onClose={() => setSelectedNotificationForDetail(null)}
+        onNavigateToTab={handleNavigateFromNotification}
+        onMarkAsRead={handleMarkNotificationAsRead}
+        onOpenReportSheet={(order) => {
+          setSelectedOrderForReport(order);
+          setActiveTab('tech_report');
+        }}
+      />
+
+      {/* ACCEPT REQUEST MODAL */}
+      <AcceptRequestModal
+        isOpen={!!selectedOrderToAccept}
+        order={selectedOrderToAccept}
+        technicians={technicians}
+        onClose={() => setSelectedOrderToAccept(null)}
+        onConfirmAccept={handleAcceptServiceRequest}
+      />
+
+      {/* REJECT REQUEST MODAL */}
+      <RejectRequestModal
+        isOpen={!!selectedOrderToReject}
+        order={selectedOrderToReject}
+        onClose={() => setSelectedOrderToReject(null)}
+        onConfirmReject={handleRejectServiceRequest}
+      />
 
       {/* Emergency Dispatch Modal */}
       {showEmergencyModal && (

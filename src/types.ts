@@ -1,7 +1,7 @@
 export type UserRole = 'admin' | 'technician' | 'client';
 
 export type PriorityLevel = 'EMERGENCIA' | 'ALTA' | 'MEDIA' | 'PROGRAMADO';
-export type OrderStatus = 'PENDIENTE' | 'EN_RUTA' | 'EN_EJECUCION' | 'FINALIZADA' | 'FACTURADA';
+export type OrderStatus = 'PENDIENTE' | 'EN_RUTA' | 'EN_EJECUCION' | 'FINALIZADA' | 'FACTURADA' | 'PROGRAMADO' | 'RECHAZADA';
 export type ApprovalStatus = 'PENDIENTE_VALIDACION' | 'APROBADO_ENVIADO' | 'RECHAZADO_CORRECCION' | 'BORRADOR';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO' | 'EN_VERIFICACION' | 'ANULADA';
 export type PaymentMethod = 'PSE' | 'TARJETA' | 'NEQUI' | 'DAVIPLATA' | 'EFECTIVO_VERIFICADO' | 'TRANSFERENCIA_BANCARIA';
@@ -10,7 +10,7 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type: 'REPORT_SUBMITTED' | 'INVOICE_GENERATED' | 'REPORT_APPROVED' | 'REPORT_REJECTED' | 'PAYMENT_RECEIVED' | 'EMERGENCIA';
+  type: 'REPORT_SUBMITTED' | 'INVOICE_GENERATED' | 'REPORT_APPROVED' | 'REPORT_REJECTED' | 'PAYMENT_RECEIVED' | 'EMERGENCIA' | 'SERVICE_REQUESTED' | 'TECH_ASSIGNED' | 'PART_PURCHASED';
   targetRole: 'admin' | 'technician' | 'client' | 'all';
   targetClientId?: string;
   targetTechId?: string;
@@ -21,6 +21,78 @@ export interface AppNotification {
   timestamp: string;
   read: boolean;
   actionTab?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ServiceRequestData {
+  serviceType: string;
+  urgencyLevel: string;
+  equipmentType: string;
+  specificType: string;
+  housingType?: string;
+  housingDescription?: string;
+  suggestedDate: string;
+  suggestedTime: string;
+  problemDescription: string;
+  photoPreviews?: string[];
+  clientName: string;
+  documentType: string;
+  documentNumber: string;
+  clientEmail: string;
+  clientPhone: string;
+  clientAddress: string;
+  selectedSpareParts: { part: SparePart; quantity: number }[];
+}
+
+export interface SparePart {
+  id: string;
+  code: string; // SKU
+  name: string;
+  category: string;
+  brand: string;
+  description: string;
+  imageUrl?: string;
+  stock: number;
+  minStock: number;
+  unit: string;
+  unitPriceCOP: number;
+  warehouseLocation: string;
+  updatedAt?: string;
+}
+
+export interface CompanySettings {
+  companyName: string;
+  tradeName: string;
+  nit: string;
+  address: string;
+  city: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  billingEmail: string;
+  website: string;
+  dianResolutionNumber: string;
+  dianResolutionDate: string;
+  dianInvoicePrefix: string;
+  dianFromNumber: number;
+  dianToNumber: number;
+  bankName: string;
+  bankAccountType: string;
+  bankAccountNumber: string;
+  bankHolderName: string;
+  logoUrl?: string;
+  tagline?: string;
+}
+
+export interface AdminProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  roleTitle: string;
+  avatarUrl?: string;
+  signatureUrl?: string;
+  department: string;
 }
 
 export interface MaterialItem {
@@ -75,6 +147,7 @@ export interface TechnicalReport {
 export interface WorkOrder {
   id: string;
   orderNumber: string; // e.g., OT-2026-084
+  clientId?: string;
   clientName: string;
   clientNit: string;
   clientContact: string;
@@ -84,6 +157,8 @@ export interface WorkOrder {
   neighborhood: string;
   city: string;
   coordinates: { lat: number; lng: number };
+  housingType?: string;
+  housingDescription?: string;
   equipmentType: string;
   brand: string;
   model: string;
@@ -101,6 +176,12 @@ export interface WorkOrder {
   invoiceId?: string;
   etaMinutes?: number;
   createdAt?: string;
+  requestStatus?: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA';
+  rejectionReason?: string;
+  rejectedAt?: string;
+  approvedAt?: string;
+  serviceCategory?: string;
+  requestedSpareParts?: { part: SparePart; quantity: number }[];
 }
 
 export interface InvoiceItem {
@@ -154,6 +235,8 @@ export interface Technician {
   username: string; // Asignado para ingreso a plataforma
   password?: string; // Contraseña asignada de acceso
   avatarUrl?: string;
+  jobPosition?: string; // Cargo (e.g. "Técnica Especialista en Bombas y Variadores VFD", "Ingeniero Hidráulico")
+  educationLevel?: string; // Nivel de Escolaridad (e.g. "Tecnólogo en Electromecánica (SENA)", "Profesional Universitario")
   specialty: 'Electrobombas y VFD' | 'Redes RCI & Contra Incendio' | 'Plantas Tratamiento & Osmosis' | 'Hidroneumáticos & Válvulas' | 'General Hidráulico';
   status: 'DISPONIBLE' | 'EN_RUTA' | 'EN_SERVICIO' | 'DESCANSO';
   currentLocationName: string;
@@ -189,6 +272,8 @@ export interface ClientAccount {
   nit: string; // Identificación principal
   adminName: string; // Nombre de contacto / administrador
   clientRole: string; // Rol del cliente (e.g. "Administrador de Copropiedad", "Propietario", "Gerente de Operaciones")
+  housingType?: string; // Tipo de Vivienda / Inmueble (e.g. "Conjunto Residencial", "Apartamento / Edificio", "Casa unifamiliar", etc.)
+  housingDescription?: string; // Descripción opcional (e.g. "Torre 3, Apto 502 / Cuarto de bombas sótano 1")
   phone: string;
   email: string;
   address: string;
@@ -198,7 +283,6 @@ export interface ClientAccount {
   password?: string; // Contraseña asignada de acceso
   avatarUrl?: string; // Foto o logo del cliente
   contractType: 'PREVENTIVO_GOLD_MENSUAL' | 'PREVENTIVO_SILVER_BIMENSUAL' | 'POR_EVENTO';
-  monthlyFeeCOP: number;
   sanitaryCertificateValidUntil: string;
   equipments: InstalledEquipment[];
 }

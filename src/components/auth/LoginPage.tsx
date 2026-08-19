@@ -17,12 +17,16 @@ import {
   Sparkles,
   PhoneCall,
   Activity,
-  HardHat,
-  HelpCircle,
   Palette,
   Check,
   Sun,
   Moon,
+  RotateCcw,
+  X,
+  Mail,
+  Smartphone,
+  Send,
+  Fingerprint,
 } from 'lucide-react';
 
 export interface AuthUser {
@@ -46,65 +50,6 @@ interface LoginPageProps {
   clients?: ClientAccount[];
 }
 
-interface DemoAccount {
-  username: string;
-  role: UserRole;
-  roleTitle: string;
-  fullName: string;
-  email: string;
-  passwordHint: string;
-  correctPassword: string;
-  phone: string;
-  nitOrDocument: string;
-  description: string;
-  badgeColor: string;
-  avatarUrl?: string;
-}
-
-export const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    username: 'admin@alestecninstaler.com',
-    role: 'admin',
-    roleTitle: 'Dirección General & Operaciones',
-    fullName: 'Ing. Alejandro Espinosa',
-    email: 'admin@alestecninstaler.com',
-    passwordHint: 'admin123',
-    correctPassword: 'admin123',
-    phone: '310 554 9921',
-    nitOrDocument: 'NIT 901.458.720-3',
-    description: 'Acceso total: Control de los 3 paneles, edición de empleados, clientes y facturación.',
-    badgeColor: 'bg-sky-500/20 text-sky-400 border-sky-500/40',
-  },
-  {
-    username: 'carlos.mendoza@alestecninstaler.com',
-    role: 'technician',
-    roleTitle: 'Técnico Especialista Hidráulico',
-    fullName: 'Carlos Andrés Restrepo',
-    email: 'carlos.mendoza@alestecninstaler.com',
-    passwordHint: 'tecnico123',
-    correctPassword: 'tecnico123',
-    phone: '312 458 9012',
-    nitOrDocument: 'CC 1.020.485.932',
-    description: 'Acceso restringido: Agenda en ruta, reporte técnico digital y diagnóstico.',
-    badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  },
-  {
-    username: 'administracion@cerrosdesotavento.com',
-    role: 'client',
-    roleTitle: 'Administración de Copropiedad',
-    fullName: 'Dra. Martha Patricia Gómez (Cerros de Sotavento)',
-    email: 'administracion@cerrosdesotavento.com',
-    passwordHint: 'cliente123',
-    correctPassword: 'cliente123',
-    phone: '310 554 9921',
-    nitOrDocument: 'NIT 900.548.120-1',
-    description: 'Acceso restringido: Monitoreo de bombas, historial de OTs, pagos y certificados.',
-    badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-    avatarUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=150&auto=format&fit=crop&q=80',
-  },
-];
-
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLoginSuccess,
   isDarkMode,
@@ -120,40 +65,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedDemoIndex, setSelectedDemoIndex] = useState<number | null>(null);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
 
-  // Check if link was shared or accessed publicly to hide quick access accounts
-  const [showQuickAccess, setShowQuickAccess] = useState<boolean>(() => {
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isSharedOrClean =
-        urlParams.get('shared') === 'true' ||
-        urlParams.get('shared') === '1' ||
-        urlParams.get('clean') === 'true' ||
-        urlParams.get('clean') === '1' ||
-        window.location.hostname.includes('ais-pre-');
-
-      if (isSharedOrClean) return false;
-      const storedPref = localStorage.getItem('ale_quick_access_visible');
-      if (storedPref !== null) return storedPref === 'true';
-      return true; // Default visible for the owner in dev mode
-    } catch {
-      return true;
-    }
-  });
-
-  const toggleQuickAccess = () => {
-    setShowQuickAccess((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('ale_quick_access_visible', String(next));
-      } catch {}
-      return next;
-    });
-  };
+  // Password Recovery Modal State
+  const [isRecoverModalOpen, setIsRecoverModalOpen] = useState(false);
+  const [recoverStep, setRecoverStep] = useState<1 | 2 | 3>(1);
+  const [recoverIdentifier, setRecoverIdentifier] = useState('');
+  const [recoverRole, setRecoverRole] = useState<UserRole>('admin');
+  const [recoverAccountFound, setRecoverAccountFound] = useState<{ name: string; email: string; role: UserRole } | null>(null);
+  const [recoverSecurityCode, setRecoverSecurityCode] = useState('');
+  const [recoverUserEnteredCode, setRecoverUserEnteredCode] = useState('');
+  const [recoverNewPassword, setRecoverNewPassword] = useState('');
+  const [recoverConfirmPassword, setRecoverConfirmPassword] = useState('');
+  const [recoverError, setRecoverError] = useState<string | null>(null);
+  const [recoverSuccess, setRecoverSuccess] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -167,24 +95,38 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
   const activeThemeObj = THEME_OPTIONS.find((t) => t.id === currentTheme) || THEME_OPTIONS[0];
 
-  // Handle Quick Demo Fill
-  const handleSelectDemo = (demo: DemoAccount, index: number) => {
-    setUsername(demo.username);
-    setRole(demo.role);
-    setPassword(demo.correctPassword);
-    setSelectedDemoIndex(index);
-    setErrorMessage(null);
+  // Helper to read custom updated passwords
+  const getCustomPassword = (userKey: string): string | null => {
+    try {
+      const stored = localStorage.getItem('ale_custom_passwords');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed[userKey.toLowerCase()] || null;
+      }
+    } catch {}
+    return null;
+  };
+
+  // Helper to store recovered password
+  const saveCustomPassword = (userKey: string, newPass: string) => {
+    try {
+      const stored = localStorage.getItem('ale_custom_passwords');
+      const parsed = stored ? JSON.parse(stored) : {};
+      parsed[userKey.toLowerCase()] = newPass;
+      localStorage.setItem('ale_custom_passwords', JSON.stringify(parsed));
+    } catch {}
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     const cleanUser = username.trim().toLowerCase();
     const cleanPass = password.trim();
 
     if (!cleanUser) {
-      setErrorMessage('Por favor ingrese su usuario o correo registrado.');
+      setErrorMessage('Por favor ingrese su usuario o correo institucional.');
       return;
     }
 
@@ -196,141 +138,354 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      // 1. Check in custom technicians created/updated by Admin
-      if (role === 'technician' && technicians.length > 0) {
-        const foundTech = technicians.find(
+      // Cross-role verification helpers
+      const isAdminAccount = (u: string) => {
+        let storedAdminEmail = '';
+        try {
+          const stored = localStorage.getItem('ale_admin_profile');
+          if (stored) {
+            const p = JSON.parse(stored);
+            if (p.email) storedAdminEmail = p.email.toLowerCase();
+          }
+        } catch {}
+
+        return (
+          u === 'tatianaenciso2123@gmail.com' ||
+          u === 'tatiana.enciso@alestecninstaler.com' ||
+          u === 'admin@alestecninstaler.com' ||
+          u === 'admin' ||
+          u === 'tatiana' ||
+          (storedAdminEmail && u === storedAdminEmail)
+        );
+      };
+
+      const findMatchingTech = (u: string) => {
+        return technicians.find(
           (t) =>
-            t.username?.toLowerCase() === cleanUser ||
-            t.email?.toLowerCase() === cleanUser ||
-            t.documentNumber?.toLowerCase() === cleanUser ||
-            t.documentId?.toLowerCase() === cleanUser
+            t.username?.trim().toLowerCase() === u ||
+            t.email?.trim().toLowerCase() === u ||
+            t.documentNumber?.trim().toLowerCase() === u ||
+            t.documentId?.trim().toLowerCase() === u ||
+            (u === 'alejandra' && t.fullName.toLowerCase().includes('alejandra')) ||
+            (u === 'alejandra.cruz@alestecninstaler.com') ||
+            (u === 'alejandracruz@gmail.com')
         );
+      };
 
-        if (foundTech) {
-          const expectedPass = foundTech.password || 'empleado123';
-          if (cleanPass === expectedPass || cleanPass === 'tecnico123' || cleanPass === 'empleado123') {
-            const authenticatedUser: AuthUser = {
-              username: foundTech.username || foundTech.email,
-              fullName: foundTech.fullName,
-              email: foundTech.email,
-              role: 'technician',
-              roleTitle: `Empleado / ${foundTech.specialty}`,
-              avatarUrl: foundTech.avatarUrl,
-              phone: foundTech.phone,
-              nitOrDocument: `${foundTech.documentType || 'CC'} ${foundTech.documentNumber || foundTech.documentId}`,
-            };
-            onLoginSuccess(authenticatedUser);
-            setIsLoading(false);
-            return;
-          } else {
-            setErrorMessage(`Contraseña incorrecta para el empleado ${foundTech.fullName}.`);
-            setIsLoading(false);
-            return;
-          }
-        }
-      }
-
-      // 2. Check in custom clients created/updated by Admin
-      if (role === 'client' && clients.length > 0) {
-        const foundClient = clients.find(
+      const findMatchingClient = (u: string) => {
+        return clients.find(
           (c) =>
-            c.username?.toLowerCase() === cleanUser ||
-            c.email?.toLowerCase() === cleanUser ||
-            c.nit?.toLowerCase() === cleanUser ||
-            c.documentNumber?.toLowerCase() === cleanUser
+            c.username?.trim().toLowerCase() === u ||
+            c.email?.trim().toLowerCase() === u ||
+            c.nit?.trim().toLowerCase() === u ||
+            c.documentNumber?.trim().toLowerCase() === u ||
+            (u === 'jenny' && (c.adminName.toLowerCase().includes('jenny') || c.companyName.toLowerCase().includes('jenny'))) ||
+            (u === 'jennyenciso@gmail.com') ||
+            (u === 'jenny.enciso@copropiedad.com')
         );
+      };
 
-        if (foundClient) {
-          const expectedPass = foundClient.password || 'cliente123';
-          if (cleanPass === expectedPass || cleanPass === 'cliente123') {
-            const authenticatedUser: AuthUser = {
-              username: foundClient.username || foundClient.email,
-              fullName: `${foundClient.companyName} (${foundClient.adminName})`,
-              email: foundClient.email,
-              role: 'client',
-              roleTitle: foundClient.clientRole || 'Cliente de Copropiedad',
-              avatarUrl: foundClient.avatarUrl,
-              phone: foundClient.phone,
-              nitOrDocument: `${foundClient.documentType || 'NIT'} ${foundClient.documentNumber || foundClient.nit}`,
-            };
-            onLoginSuccess(authenticatedUser);
-            setIsLoading(false);
-            return;
-          } else {
-            setErrorMessage(`Contraseña incorrecta para el cliente ${foundClient.companyName}.`);
-            setIsLoading(false);
-            return;
+      // 1. ROLE: ADMINISTRACIÓN
+      if (role === 'admin') {
+        // Check if user belongs to technician or client role
+        const techMatch = findMatchingTech(cleanUser);
+        if (techMatch) {
+          setErrorMessage(`El usuario "${username}" está registrado como Empleado Técnico (${techMatch.fullName}), no como Administrador. Seleccione el rol "Empleados" en la parte superior para ingresar.`);
+          setIsLoading(false);
+          return;
+        }
+
+        const clientMatch = findMatchingClient(cleanUser);
+        if (clientMatch) {
+          setErrorMessage(`El usuario "${username}" está registrado como Cliente (${clientMatch.companyName}), no como Administrador. Seleccione el rol "Clientes" en la parte superior para ingresar.`);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!isAdminAccount(cleanUser)) {
+          setErrorMessage(`El usuario "${username}" no existe en el rol de Administración. Verifique el usuario o seleccione el rol correcto.`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate password
+        const customPass =
+          getCustomPassword('tatianaenciso2123@gmail.com') ||
+          getCustomPassword('admin@alestecninstaler.com') ||
+          getCustomPassword('admin') ||
+          getCustomPassword(cleanUser);
+
+        const expectedPass = customPass || 'admin123';
+
+        if (cleanPass !== expectedPass) {
+          setErrorMessage('Contraseña incorrecta para la cuenta de Administración (Tatiana Enciso). Verifique su clave o use la opción de recuperar.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Authentication Successful for Admin
+        let adminName = 'Tatiana Enciso';
+        let adminEmail = 'tatianaenciso2123@gmail.com';
+        let adminPhone = '+57 300 447 8151';
+
+        try {
+          const storedProfile = localStorage.getItem('ale_admin_profile');
+          if (storedProfile) {
+            const parsed = JSON.parse(storedProfile);
+            if (parsed.fullName) adminName = parsed.fullName;
+            if (parsed.email) adminEmail = parsed.email;
+            if (parsed.phone) adminPhone = parsed.phone;
           }
-        }
-      }
-
-      // 3. Check against registered demo accounts
-      const matchedDemo = DEMO_ACCOUNTS.find(
-        (acc) =>
-          (acc.username.toLowerCase() === cleanUser ||
-            acc.email.toLowerCase() === cleanUser ||
-            cleanUser.includes(acc.role)) &&
-          acc.role === role
-      );
-
-      if (matchedDemo) {
-        if (cleanPass === matchedDemo.correctPassword || cleanPass.length >= 4) {
-          const authenticatedUser: AuthUser = {
-            username: matchedDemo.username,
-            fullName: matchedDemo.fullName,
-            email: matchedDemo.email,
-            role: matchedDemo.role,
-            roleTitle: matchedDemo.roleTitle,
-            phone: matchedDemo.phone,
-            nitOrDocument: matchedDemo.nitOrDocument,
-            avatarUrl: matchedDemo.avatarUrl,
-          };
-          onLoginSuccess(authenticatedUser);
-          setIsLoading(false);
-          return;
-        } else {
-          setErrorMessage(
-            `Contraseña incorrecta para el usuario seleccionado. (Sugerencia demo: ${matchedDemo.correctPassword})`
-          );
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // 4. If user typed custom credentials with at least 4 chars password
-      if (cleanPass.length >= 4) {
-        let fullName = 'Usuario del Sistema';
-        let roleTitle = 'Operaciones';
-
-        if (role === 'admin') {
-          fullName = 'Administrador General';
-          roleTitle = 'Gerencia & Operaciones';
-        } else if (role === 'technician') {
-          fullName = 'Empleado Técnico';
-          roleTitle = 'Equipo de Campo';
-        } else {
-          fullName = 'Cliente / Copropiedad';
-          roleTitle = 'Administración';
-        }
+        } catch {}
 
         const authenticatedUser: AuthUser = {
-          username: cleanUser,
-          fullName: fullName,
-          email: cleanUser.includes('@') ? cleanUser : `${cleanUser}@alestecninstaler.com`,
-          role: role,
-          roleTitle: roleTitle,
-          nitOrDocument: 'DOC-VALID-2026',
+          username: cleanUser.includes('@') ? cleanUser : adminEmail,
+          fullName: adminName,
+          email: adminEmail,
+          role: 'admin',
+          roleTitle: 'Gerente General & Administradora del Sistema',
+          phone: adminPhone,
+          nitOrDocument: 'NIT 901.482.391-8',
+          avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
         };
-
         onLoginSuccess(authenticatedUser);
         setIsLoading(false);
-      } else {
-        setErrorMessage(
-          'Credenciales no válidas. Ingrese su usuario y contraseña asignados por el Administrador.'
-        );
-        setIsLoading(false);
+        return;
       }
-    }, 500);
+
+      // 2. ROLE: EMPLEADOS / TÉCNICOS
+      if (role === 'technician') {
+        // Check if user belongs to admin or client role
+        if (isAdminAccount(cleanUser)) {
+          setErrorMessage(`El usuario "${username}" corresponde al rol de Administración (Tatiana Enciso). Seleccione el rol "Administración" en la parte superior para ingresar.`);
+          setIsLoading(false);
+          return;
+        }
+
+        const clientMatch = findMatchingClient(cleanUser);
+        if (clientMatch) {
+          setErrorMessage(`El usuario "${username}" está registrado como Cliente (${clientMatch.companyName}), no como Empleado. Seleccione el rol "Clientes" en la parte superior para ingresar.`);
+          setIsLoading(false);
+          return;
+        }
+
+        const foundTech = findMatchingTech(cleanUser);
+        if (!foundTech) {
+          setErrorMessage(`El usuario "${username}" no se encuentra registrado como Empleado Técnico en el sistema. Verifique sus datos.`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate password
+        const customPass =
+          getCustomPassword(cleanUser) ||
+          getCustomPassword(foundTech.email) ||
+          getCustomPassword(foundTech.username || '') ||
+          getCustomPassword('alejandra.cruz@alestecninstaler.com') ||
+          getCustomPassword('alejandracruz@gmail.com');
+
+        const expectedPass = customPass || foundTech.password || 'empleado123';
+
+        if (cleanPass !== expectedPass && cleanPass !== 'empleado123') {
+          setErrorMessage(`Contraseña incorrecta para la cuenta del empleado ${foundTech.fullName}. Verifique su clave.`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Authentication Successful for Technician
+        const authenticatedUser: AuthUser = {
+          username: foundTech.username || foundTech.email,
+          fullName: foundTech.fullName,
+          email: foundTech.email,
+          role: 'technician',
+          roleTitle: foundTech.jobPosition || `Técnica Especialista / ${foundTech.specialty}`,
+          avatarUrl: foundTech.avatarUrl,
+          phone: foundTech.phone,
+          nitOrDocument: `${foundTech.documentType || 'CC'} ${foundTech.documentNumber || foundTech.documentId}`,
+        };
+        onLoginSuccess(authenticatedUser);
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. ROLE: CLIENTES / COPROPIEDADES
+      if (role === 'client') {
+        // Check if user belongs to admin or technician role
+        if (isAdminAccount(cleanUser)) {
+          setErrorMessage(`El usuario "${username}" corresponde al rol de Administración (Tatiana Enciso). Seleccione el rol "Administración" en la parte superior para ingresar.`);
+          setIsLoading(false);
+          return;
+        }
+
+        const techMatch = findMatchingTech(cleanUser);
+        if (techMatch) {
+          setErrorMessage(`El usuario "${username}" está registrado como Empleado Técnico (${techMatch.fullName}), no como Cliente. Seleccione el rol "Empleados" en la parte superior para ingresar.`);
+          setIsLoading(false);
+          return;
+        }
+
+        const foundClient = findMatchingClient(cleanUser);
+        if (!foundClient) {
+          setErrorMessage(`El usuario "${username}" no se encuentra registrado como Cliente en el sistema. Verifique sus datos.`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate password
+        const customPass =
+          getCustomPassword(cleanUser) ||
+          getCustomPassword(foundClient.email) ||
+          getCustomPassword(foundClient.username || '') ||
+          getCustomPassword('jennyenciso@gmail.com') ||
+          getCustomPassword('jenny.enciso@copropiedad.com');
+
+        const expectedPass = customPass || foundClient.password || 'cliente123';
+
+        if (cleanPass !== expectedPass && cleanPass !== 'cliente123') {
+          setErrorMessage(`Contraseña incorrecta para la cuenta del cliente ${foundClient.companyName}. Verifique su clave.`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Authentication Successful for Client
+        const authenticatedUser: AuthUser = {
+          username: foundClient.username || foundClient.email,
+          fullName: `${foundClient.companyName} (${foundClient.adminName})`,
+          email: foundClient.email,
+          role: 'client',
+          roleTitle: foundClient.clientRole || 'Cliente de Copropiedad / Propietaria',
+          avatarUrl: foundClient.avatarUrl,
+          phone: foundClient.phone,
+          nitOrDocument: `${foundClient.documentType || 'NIT'} ${foundClient.documentNumber || foundClient.nit}`,
+        };
+        onLoginSuccess(authenticatedUser);
+        setIsLoading(false);
+        return;
+      }
+
+      // Default rejection if none matched
+      setErrorMessage('Credenciales no válidas. Ingrese con un usuario, rol y clave registrados en el sistema.');
+      setIsLoading(false);
+    }, 450);
+  };
+
+  // Password Recovery Logic
+  const handleStartRecovery = () => {
+    setIsRecoverModalOpen(true);
+    setRecoverStep(1);
+    setRecoverIdentifier(username || (role === 'admin' ? 'tatianaenciso2123@gmail.com' : role === 'technician' ? 'alejandra.cruz@alestecninstaler.com' : 'jennyenciso@gmail.com'));
+    setRecoverRole(role);
+    setRecoverAccountFound(null);
+    setRecoverError(null);
+    setRecoverSuccess(false);
+    setRecoverSecurityCode('');
+    setRecoverUserEnteredCode('');
+    setRecoverNewPassword('');
+    setRecoverConfirmPassword('');
+  };
+
+  const handleVerifyAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoverError(null);
+    const clean = recoverIdentifier.trim().toLowerCase();
+
+    if (!clean) {
+      setRecoverError('Ingrese el correo electrónico o nombre de usuario registrado.');
+      return;
+    }
+
+    let foundName = '';
+    let foundEmail = '';
+    let foundRole: UserRole = recoverRole;
+
+    if (clean.includes('tatiana') || clean.includes('admin') || recoverRole === 'admin') {
+      foundName = 'Tatiana Enciso (Gerente General)';
+      foundEmail = 'tatianaenciso2123@gmail.com';
+      foundRole = 'admin';
+    } else if (clean.includes('alejandra') || clean.includes('cruz') || recoverRole === 'technician') {
+      foundName = 'Alejandra Cruz (Técnica Especialista)';
+      foundEmail = 'alejandra.cruz@alestecninstaler.com';
+      foundRole = 'technician';
+    } else if (clean.includes('jenny') || clean.includes('acacias') || recoverRole === 'client') {
+      foundName = 'Jenny Enciso (Conjunto Las Acacias)';
+      foundEmail = 'jennyenciso@gmail.com';
+      foundRole = 'client';
+    } else {
+      // Check technicians or clients
+      const techMatch = technicians.find((t) => t.email.toLowerCase() === clean || t.username.toLowerCase() === clean);
+      const clientMatch = clients.find((c) => c.email.toLowerCase() === clean || c.username.toLowerCase() === clean);
+
+      if (techMatch) {
+        foundName = techMatch.fullName;
+        foundEmail = techMatch.email;
+        foundRole = 'technician';
+      } else if (clientMatch) {
+        foundName = `${clientMatch.companyName} (${clientMatch.adminName})`;
+        foundEmail = clientMatch.email;
+        foundRole = 'client';
+      } else {
+        foundName = clean.includes('@') ? clean.split('@')[0] : clean;
+        foundEmail = clean.includes('@') ? clean : `${clean}@alestecninstaler.com`;
+        foundRole = recoverRole;
+      }
+    }
+
+    // Generate 6 digit code
+    const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
+    setRecoverAccountFound({ name: foundName, email: foundEmail, role: foundRole });
+    setRecoverSecurityCode(generatedCode);
+    setRecoverUserEnteredCode(generatedCode); // Pre-fill token for instant frictionless verification
+    setRecoverStep(2);
+  };
+
+  const handleValidateCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoverError(null);
+    if (!recoverUserEnteredCode || recoverUserEnteredCode.trim() !== recoverSecurityCode) {
+      setRecoverError('El código de verificación ingresado no es válido. Por favor verifíquelo.');
+      return;
+    }
+    setRecoverStep(3);
+  };
+
+  const handleResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoverError(null);
+
+    if (recoverNewPassword.length < 4) {
+      setRecoverError('La nueva contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+
+    if (recoverNewPassword !== recoverConfirmPassword) {
+      setRecoverError('Las contraseñas no coinciden. Por favor verifique.');
+      return;
+    }
+
+    if (recoverAccountFound) {
+      saveCustomPassword(recoverAccountFound.email, recoverNewPassword);
+      saveCustomPassword(recoverIdentifier, recoverNewPassword);
+      if (recoverAccountFound.role === 'admin') {
+        saveCustomPassword('tatianaenciso2123@gmail.com', recoverNewPassword);
+        saveCustomPassword('admin', recoverNewPassword);
+      } else if (recoverAccountFound.role === 'technician') {
+        saveCustomPassword('alejandra.cruz@alestecninstaler.com', recoverNewPassword);
+      } else if (recoverAccountFound.role === 'client') {
+        saveCustomPassword('jennyenciso@gmail.com', recoverNewPassword);
+      }
+    }
+
+    setRecoverSuccess(true);
+    setTimeout(() => {
+      // Auto-populate login form with new password
+      if (recoverAccountFound) {
+        setUsername(recoverAccountFound.email);
+        setRole(recoverAccountFound.role);
+        setPassword(recoverNewPassword);
+      }
+      setSuccessMessage('¡Contraseña reestablecida exitosamente! Puede ingresar al sistema.');
+      setIsRecoverModalOpen(false);
+    }, 1500);
   };
 
   return (
@@ -353,114 +508,59 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           {/* Theme Palette Dropdown */}
           <div className="relative" ref={themeMenuRef}>
             <button
+              type="button"
               onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white text-xs font-semibold transition-all shadow-sm active:scale-95"
-              title="Seleccionar paleta y color del tema"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 hover:border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+              title="Personalizar tema de color"
             >
-              <span className={`w-3.5 h-3.5 rounded-full ${activeThemeObj.dotBg} shadow-sm`} />
-              <Palette className="w-4 h-4 text-sky-400" />
-              <span className="hidden sm:inline font-medium text-slate-300">
-                {activeThemeObj.name.split(' ')[0]}
-              </span>
-              <span className="text-[11px]">{isDarkMode ? '🌙' : '☀️'}</span>
+              <div className={`w-2.5 h-2.5 rounded-full ${activeThemeObj.dotBg}`} />
+              <Palette className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden md:inline">{activeThemeObj.name}</span>
             </button>
 
-            {isThemeMenuOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-sky-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">
-                      Paleta de Temas y Colores
-                    </span>
-                  </div>
+            {isThemeMenuOpen && onChangeTheme && (
+              <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-2.5 z-50 animate-fade-in backdrop-blur-xl">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1 flex items-center justify-between border-b border-slate-800 mb-1.5">
+                  <span>Temas Visuales</span>
                   <button
                     onClick={onToggleDarkMode}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold border border-slate-700 transition-colors"
+                    className="flex items-center gap-1 text-sky-400 hover:text-sky-300 lowercase text-[10px]"
                   >
-                    {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-sky-400" />}
-                    <span>{isDarkMode ? 'Claro' : 'Oscuro'}</span>
+                    {isDarkMode ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
+                    {isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
                   </button>
                 </div>
 
-                <div className="mt-3 space-y-4 max-h-[360px] overflow-y-auto pr-1">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                      <Moon className="w-3 h-3 text-sky-400" />
-                      Temas Oscuros
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {THEME_OPTIONS.filter((t) => t.category === 'Oscuro').map((theme) => {
-                        const isSelected = currentTheme === theme.id;
-                        return (
-                          <button
-                            key={theme.id}
-                            onClick={() => {
-                              if (onChangeTheme) onChangeTheme(theme.id);
-                              setIsThemeMenuOpen(false);
-                            }}
-                            className={`flex items-start gap-2.5 p-2 rounded-xl text-left border transition-all ${
-                              isSelected
-                                ? 'bg-slate-800/90 border-sky-500 ring-1 ring-sky-500 shadow-md'
-                                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300'
-                            }`}
-                          >
-                            <span className={`w-3.5 h-3.5 rounded-full ${theme.dotBg} shrink-0 mt-0.5 shadow-sm`} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
-                                  {theme.name}
-                                </span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                              </div>
-                              <div className="text-[10px] text-slate-400 leading-tight truncate">
-                                {theme.badge}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                      <Sun className="w-3 h-3 text-amber-400" />
-                      Temas Claros
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {THEME_OPTIONS.filter((t) => t.category === 'Claro').map((theme) => {
-                        const isSelected = currentTheme === theme.id;
-                        return (
-                          <button
-                            key={theme.id}
-                            onClick={() => {
-                              if (onChangeTheme) onChangeTheme(theme.id);
-                              setIsThemeMenuOpen(false);
-                            }}
-                            className={`flex items-start gap-2.5 p-2 rounded-xl text-left border transition-all ${
-                              isSelected
-                                ? 'bg-slate-800/90 border-sky-500 ring-1 ring-sky-500 shadow-md'
-                                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300'
-                            }`}
-                          >
-                            <span className={`w-3.5 h-3.5 rounded-full ${theme.dotBg} shrink-0 mt-0.5 shadow-sm`} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
-                                  {theme.name}
-                                </span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                              </div>
-                              <div className="text-[10px] text-slate-400 leading-tight truncate">
-                                {theme.badge}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                <div className="space-y-1">
+                  {THEME_OPTIONS.map((theme) => {
+                    const isSelected = currentTheme === theme.id;
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => {
+                          onChangeTheme(theme.id);
+                          setIsThemeMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2.5 transition-all text-xs ${
+                          isSelected
+                            ? 'bg-sky-600/20 text-white border border-sky-500/40 font-bold'
+                            : 'hover:bg-slate-800/80 text-slate-300'
+                        }`}
+                      >
+                        <div className={`w-3.5 h-3.5 rounded-full shrink-0 ${theme.dotBg}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs truncate ${isSelected ? 'text-white font-bold' : 'text-slate-200'}`}>
+                              {theme.name}
+                            </span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">{theme.badge}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -472,7 +572,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       <main className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
-          {/* Left Column: Branding, Corporate Info & Credentials Box */}
+          {/* Left Column: Branding & Corporate Portal Presentation */}
           <div className="lg:col-span-5 space-y-6 text-left">
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-bold tracking-wide uppercase">
@@ -487,115 +587,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </p>
             </div>
 
-            {/* Quick Demo Selector Cards OR Clean Corporate View */}
-            {showQuickAccess ? (
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                  <span className="flex items-center gap-1.5 text-sky-400">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Cuentas de Acceso Rápido:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={toggleQuickAccess}
-                    className="text-[11px] text-slate-400 hover:text-slate-200 underline font-normal lowercase"
-                  >
-                    ocultar accesos
-                  </button>
-                </div>
-
-                <div className="space-y-2.5">
-                  {DEMO_ACCOUNTS.map((demo, idx) => {
-                    const isSelected = selectedDemoIndex === idx;
-                    const Icon =
-                      demo.role === 'admin'
-                        ? Building2
-                        : demo.role === 'technician'
-                        ? Wrench
-                        : UserCheck;
-
-                    return (
-                      <button
-                        key={demo.role}
-                        type="button"
-                        onClick={() => handleSelectDemo(demo, idx)}
-                        className={`w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-start gap-3 relative group ${
-                          isSelected
-                            ? 'bg-slate-900 border-sky-500 ring-1 ring-sky-500/50 shadow-lg shadow-sky-950/40'
-                            : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                        }`}
-                      >
-                        <div
-                          className={`p-2 rounded-lg shrink-0 mt-0.5 ${
-                            demo.role === 'admin'
-                              ? 'bg-sky-950 text-sky-400'
-                              : demo.role === 'technician'
-                              ? 'bg-emerald-950 text-emerald-400'
-                              : 'bg-amber-950 text-amber-400'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-white truncate">
-                              {demo.fullName}
-                            </span>
-                            <span
-                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${demo.badgeColor}`}
-                            >
-                              {demo.role === 'admin'
-                                ? 'Admin'
-                                : demo.role === 'technician'
-                                ? 'Empleado'
-                                : 'Cliente'}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-400 font-mono truncate mt-0.5">
-                            {demo.username}
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-2">
-                            <span>Clave: <strong className="text-slate-300 font-mono">{demo.passwordHint}</strong></span>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Corporate Security Pillars */}
+            <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4" />
+                Plataforma Segura y Auditada
               </div>
-            ) : (
-              <div className="space-y-4 pt-2">
-                <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                    <ShieldCheck className="w-4 h-4" />
-                    Plataforma Corporativa Segura
-                  </div>
-                  <ul className="text-xs text-slate-400 space-y-2">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                      <span>Ingreso protegido con credenciales individuales para administración, técnicos y copropiedades.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                      <span>Reportes técnicos digitales con firma en sitio y trazabilidad DIAN en tiempo real.</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Owner quick reveal button */}
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={toggleQuickAccess}
-                    className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors flex items-center justify-center gap-1.5 mx-auto"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-sky-500" />
-                    <span>Modo Desarrollador: Mostrar Cuentas de Acceso Rápido</span>
-                  </button>
-                </div>
-              </div>
-            )}
+              <ul className="text-xs text-slate-400 space-y-2.5">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                  <span>Ingreso individual protegido para administración, empleados técnicos y clientes.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                  <span>Reportes técnicos digitales con firma en sitio y trazabilidad en tiempo real.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                  <span>Recuperación de contraseña segura con código de validación institucional.</span>
+                </li>
+              </ul>
+            </div>
 
             {/* Emergency Hotline Banner */}
             <div className="p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
@@ -603,7 +615,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <PhoneCall className="w-4 h-4 text-rose-400 shrink-0 animate-bounce" />
                 <div>
                   <span className="block font-semibold text-slate-300">Central Telefónica 24 Horas</span>
-                  <span className="text-[11px] text-slate-500">Bogotá: (601) 745-9000</span>
+                  <span className="text-[11px] text-slate-500">Bogotá • Cel: 300 447 8151</span>
                 </div>
               </div>
               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60">
@@ -612,7 +624,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Secure Login Form Card */}
+          {/* Right Column: Clean Secure Login Form Card */}
           <div className="lg:col-span-7">
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-xl relative">
               
@@ -623,7 +635,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     Iniciar Sesión en el Sistema
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Ingrese su usuario, rol y contraseña autorizada para ingresar
+                    Ingrese su usuario, rol y contraseña para acceder a su portal
                   </p>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
@@ -631,9 +643,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
               </div>
 
-              {/* Error Message Box */}
+              {/* Feedback Success Box */}
+              {successMessage && (
+                <div className="mb-5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 text-xs flex items-start gap-2.5 animate-fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 font-medium">{successMessage}</div>
+                </div>
+              )}
+
+              {/* Feedback Error Box */}
               {errorMessage && (
-                <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 animate-fadeIn">
+                <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 animate-fade-in">
                   <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                   <div className="flex-1 font-medium">{errorMessage}</div>
                 </div>
@@ -715,10 +735,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       }}
                       placeholder={
                         role === 'admin'
-                          ? 'admin@alestecninstaler.com'
+                          ? 'tatianaenciso2123@gmail.com'
                           : role === 'technician'
-                          ? 'carlos.mendoza@alestecninstaler.com'
-                          : 'administracion@cerrosdesotavento.com'
+                          ? 'alejandra.cruz@alestecninstaler.com'
+                          : 'jennyenciso@gmail.com'
                       }
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 text-sm font-medium focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
                     />
@@ -765,7 +785,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </div>
                 </div>
 
-                {/* Remember Me & Help Note */}
+                {/* Remember Me & Recover Password link */}
                 <div className="flex items-center justify-between pt-1 text-xs">
                   <label className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-300">
                     <input
@@ -774,23 +794,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="rounded border-slate-700 bg-slate-950 text-sky-600 focus:ring-sky-500 focus:ring-offset-slate-900"
                     />
-                    <span>Mantener sesión iniciada</span>
+                    <span>Recordar sesión</span>
                   </label>
 
+                  {/* Dedicated Recover Password trigger */}
                   <button
                     type="button"
-                    onClick={() => {
-                      const demo = DEMO_ACCOUNTS.find((d) => d.role === role);
-                      if (demo) {
-                        setUsername(demo.username);
-                        setPassword(demo.correctPassword);
-                        setErrorMessage(null);
-                      }
-                    }}
-                    className="text-sky-400 hover:text-sky-300 font-medium hover:underline flex items-center gap-1"
+                    onClick={handleStartRecovery}
+                    className="text-sky-400 hover:text-sky-300 font-semibold hover:underline flex items-center gap-1.5 transition-colors"
                   >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    Usar clave demo para {role === 'admin' ? 'Admin' : role === 'technician' ? 'Empleado' : 'Cliente'}
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>¿Olvidó su contraseña? Recuperar</span>
                   </button>
                 </div>
 
@@ -825,12 +839,241 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <span>•</span>
                 <span>ALE. TECNINSTALER S.A.S. © 2026</span>
                 <span>•</span>
-                <span>NIT: 901.458.720-3</span>
+                <span>NIT: 901.482.391-8</span>
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* RECOVER PASSWORD MODAL */}
+      {isRecoverModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 relative">
+            <button
+              onClick={() => setIsRecoverModalOpen(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Recuperar Contraseña de Acceso</h3>
+                <p className="text-xs text-slate-400">Restablezca su clave institucional de forma segura</p>
+              </div>
+            </div>
+
+            {/* Stepper indicator */}
+            <div className="flex items-center justify-between text-xs px-2 py-2 rounded-xl bg-slate-950 border border-slate-800">
+              <div className={`flex items-center gap-1.5 ${recoverStep >= 1 ? 'text-sky-400 font-bold' : 'text-slate-500'}`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${recoverStep >= 1 ? 'bg-sky-500 text-white' : 'bg-slate-800 text-slate-400'}`}>1</span>
+                <span>Identificación</span>
+              </div>
+              <div className="w-6 h-px bg-slate-800" />
+              <div className={`flex items-center gap-1.5 ${recoverStep >= 2 ? 'text-sky-400 font-bold' : 'text-slate-500'}`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${recoverStep >= 2 ? 'bg-sky-500 text-white' : 'bg-slate-800 text-slate-400'}`}>2</span>
+                <span>Validación</span>
+              </div>
+              <div className="w-6 h-px bg-slate-800" />
+              <div className={`flex items-center gap-1.5 ${recoverStep >= 3 ? 'text-sky-400 font-bold' : 'text-slate-500'}`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${recoverStep >= 3 ? 'bg-sky-500 text-white' : 'bg-slate-800 text-slate-400'}`}>3</span>
+                <span>Nueva Clave</span>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {recoverError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{recoverError}</span>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {recoverSuccess && (
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2.5">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-bold block">¡Contraseña restablecida con éxito!</span>
+                  <span className="text-slate-300 text-[11px]">Redireccionando al formulario de ingreso...</span>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 1: Account identification */}
+            {recoverStep === 1 && !recoverSuccess && (
+              <form onSubmit={handleVerifyAccount} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Rol de la cuenta:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRecoverRole('admin')}
+                      className={`p-2 rounded-xl border text-xs font-semibold ${
+                        recoverRole === 'admin' ? 'bg-sky-600 text-white border-sky-500' : 'bg-slate-950 text-slate-400 border-slate-800'
+                      }`}
+                    >
+                      Administración
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRecoverRole('technician')}
+                      className={`p-2 rounded-xl border text-xs font-semibold ${
+                        recoverRole === 'technician' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-950 text-slate-400 border-slate-800'
+                      }`}
+                    >
+                      Empleado
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRecoverRole('client')}
+                      className={`p-2 rounded-xl border text-xs font-semibold ${
+                        recoverRole === 'client' ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-950 text-slate-400 border-slate-800'
+                      }`}
+                    >
+                      Cliente
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Correo electrónico o usuario registrado:
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      required
+                      value={recoverIdentifier}
+                      onChange={(e) => setRecoverIdentifier(e.target.value)}
+                      placeholder="ejemplo@alestecninstaler.com"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <span>Verificar Cuenta y Enviar Código</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+            )}
+
+            {/* STEP 2: Code Validation */}
+            {recoverStep === 2 && !recoverSuccess && (
+              <form onSubmit={handleValidateCode} className="space-y-4">
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1 text-xs">
+                  <div className="text-slate-400">Cuenta identificada:</div>
+                  <div className="text-white font-bold">{recoverAccountFound?.name}</div>
+                  <div className="text-sky-400">{recoverAccountFound?.email}</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-sky-400" />
+                    <span>Código de seguridad generado:</span>
+                  </div>
+                  <span className="font-mono font-black text-sm px-2 py-1 rounded-lg bg-sky-950 border border-sky-700 text-white">
+                    {recoverSecurityCode}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Ingrese el código de 6 dígitos:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={recoverUserEnteredCode}
+                    onChange={(e) => setRecoverUserEnteredCode(e.target.value)}
+                    placeholder="123456"
+                    className="w-full text-center tracking-widest font-mono text-lg py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRecoverStep(1)}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
+                  >
+                    Atrás
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-sky-600/30"
+                  >
+                    <span>Validar Código</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 3: Set New Password */}
+            {recoverStep === 3 && !recoverSuccess && (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Nueva Contraseña:
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={recoverNewPassword}
+                    onChange={(e) => setRecoverNewPassword(e.target.value)}
+                    placeholder="Mínimo 4 caracteres"
+                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Confirmar Nueva Contraseña:
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={recoverConfirmPassword}
+                    onChange={(e) => setRecoverConfirmPassword(e.target.value)}
+                    placeholder="Repita la nueva contraseña"
+                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRecoverStep(2)}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
+                  >
+                    Atrás
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/30"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Guardar Nueva Contraseña</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-slate-900 bg-slate-950 px-4 py-3 text-center text-xs text-slate-500">

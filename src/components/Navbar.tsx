@@ -30,6 +30,10 @@ import {
   X,
   CheckCheck,
   Share2,
+  Calendar,
+  Boxes,
+  ShoppingCart,
+  UserCog,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -49,6 +53,8 @@ interface NavbarProps {
   onMarkNotificationAsRead?: (id: string) => void;
   onSelectNotification?: (notif: AppNotification) => void;
   onOpenShareCleanModal?: () => void;
+  onOpenAdminProfile?: () => void;
+  onOpenCompanySettings?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -68,6 +74,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onMarkNotificationAsRead,
   onSelectNotification,
   onOpenShareCleanModal,
+  onOpenAdminProfile,
+  onOpenCompanySettings,
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isNotifMenuOpen, setIsNotifMenuOpen] = useState(false);
@@ -92,25 +100,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   const activeThemeObj = THEME_OPTIONS.find((t) => t.id === currentTheme) || THEME_OPTIONS[0];
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 text-white shadow-lg">
+    <header className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 text-white shadow-lg mobile-landscape-compact-header">
       {/* Top Corporate Status Bar */}
-      <div className="bg-slate-950 px-4 py-1.5 border-b border-slate-800/80 text-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4 text-slate-400">
+      <div className="bg-slate-950 px-2 sm:px-4 py-1 sm:py-1.5 border-b border-slate-800/80 text-[10px] sm:text-xs flex flex-wrap items-center justify-between gap-2 sm:gap-3 mobile-landscape-compact-header">
+        <div className="flex items-center gap-2 sm:gap-4 text-slate-400">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-slate-300 font-medium">Servidor Hidráulico Operativo</span>
           </div>
-          <span className="hidden sm:inline text-slate-600">|</span>
-          <span className="hidden sm:flex items-center gap-1 text-slate-400">
+          <span className="hidden md:inline text-slate-600">|</span>
+          <span className="hidden md:flex items-center gap-1 text-slate-400">
             <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
             Certificación ISO 9001 & Decreto 1575
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-slate-400">
-            <Activity className="w-3.5 h-3.5 text-sky-400" />
-            <span className="text-slate-300">Línea Nacional 24/7:</span>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-1.5 text-slate-400">
+            <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sky-400 shrink-0" />
+            <span className="text-slate-300 hidden xs:inline">Línea 24/7:</span>
             <a href="tel:+573004478151" className="text-sky-400 font-bold hover:underline">
               300 447 8151
             </a>
@@ -118,18 +126,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={onTriggerEmergency}
-            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition-transform active:scale-95 shadow-sm shadow-rose-900/50"
+            className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-[10px] sm:text-[11px] font-bold transition-transform active:scale-95 shadow-sm shadow-rose-900/50"
           >
             <PhoneCall className="w-3 h-3 animate-bounce" />
-            Reportar Urgencia 24/7
+            <span>Reportar Urgencia</span>
           </button>
         </div>
       </div>
 
       {/* Main Header & User Info Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        {/* Brand Logo */}
-        <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4">
+        {/* Brand Logo & Mobile Role Pill Row */}
+        <div className="flex items-center justify-between w-full sm:w-auto shrink-0">
           <BrandLogo
             size="md"
             theme="white"
@@ -137,277 +145,331 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="cursor-pointer"
           />
 
-          {/* Mobile User / Role Badge */}
-          <div className="md:hidden flex items-center gap-2">
-            <span className="text-[11px] bg-sky-900/60 text-sky-300 px-2 py-0.5 rounded-md border border-sky-700/50 font-semibold uppercase">
+          {/* Mobile User Role Badge next to brand name on mobile */}
+          <div className="sm:hidden flex items-center gap-1.5">
+            <span className="text-[10px] bg-sky-900/70 text-sky-300 px-2.5 py-0.5 rounded-md border border-sky-600/50 font-bold uppercase tracking-wider shadow-sm">
               {currentRole === 'admin'
                 ? 'Admin'
                 : currentRole === 'technician'
                 ? 'Empleado'
                 : 'Cliente'}
             </span>
-            <button
-              onClick={onLogout}
-              className="p-1.5 rounded-lg bg-rose-950/60 text-rose-300 border border-rose-800/60"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
 
-        {/* Right Section: User Profile Card & Notification Bell & Multi-Color Theme Selector & Logout */}
-        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
-          {/* Authenticated User Pill */}
+        {/* Action Functions: Displayed directly below Company Name on Android / On the Right on Tablet & Web */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-1.5 sm:gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-800/80 sm:border-t-0">
+          {/* Authenticated User Pill - Clickable to edit administrator data */}
           {currentUser && (
-            <div className="hidden sm:flex items-center gap-2.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
-              <div className="w-6 h-6 rounded-lg bg-sky-600 flex items-center justify-center text-white font-black text-[11px]">
-                {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentRole === 'admin' && onOpenAdminProfile) {
+                  onOpenAdminProfile();
+                }
+              }}
+              className={`flex items-center gap-2 bg-slate-950 hover:bg-slate-800/90 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-800 hover:border-sky-500/60 text-xs transition-all ${
+                currentRole === 'admin' ? 'cursor-pointer group active:scale-95' : 'cursor-default'
+              } text-left shadow-sm shrink-0`}
+              title={
+                currentRole === 'admin'
+                  ? 'Clic para cambiar y editar los datos del Administrador'
+                  : `Usuario autenticado: ${currentUser.fullName}`
+              }
+              id="header-user-profile-btn"
+            >
+              <div className="relative">
+                {currentUser.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.fullName}
+                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover border border-sky-400/50 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-sky-600 to-indigo-600 flex items-center justify-center text-white font-black text-[11px] sm:text-[12px] shadow-sm">
+                    {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'A'}
+                  </div>
+                )}
+                {currentRole === 'admin' && (
+                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-sky-500 rounded-full flex items-center justify-center text-[8px] text-white border border-slate-900 group-hover:scale-110 transition-transform">
+                    ✎
+                  </span>
+                )}
               </div>
-              <div className="text-left">
-                <div className="font-bold text-white leading-tight truncate max-w-[140px]">
+              <div className="text-left max-w-[110px] sm:max-w-[150px]">
+                <div className="font-bold text-white leading-tight truncate group-hover:text-sky-300 text-[11px] sm:text-xs">
                   {currentUser.fullName}
                 </div>
-                <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
-                  {currentUser.email || currentUser.username}
+                <div className="text-[9px] sm:text-[10px] text-slate-400 group-hover:text-slate-300 truncate hidden xs:flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+                  <span>{currentRole === 'admin' ? 'Administrador' : currentUser.email || currentUser.username}</span>
                 </div>
               </div>
-            </div>
+            </button>
           )}
 
-          {/* Real-time Notifications Bell */}
-          <div className="relative" ref={notifMenuRef}>
-            <button
-              onClick={() => setIsNotifMenuOpen(!isNotifMenuOpen)}
-              className="relative p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition-all active:scale-95"
-              title="Notificaciones de reportes y facturación"
-              id="navbar-notification-bell-btn"
-            >
-              <Bell className="w-4 h-4 text-sky-400" />
-              {unreadNotifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white font-black text-[9px] rounded-full flex items-center justify-center animate-pulse shadow-md shadow-rose-900/50">
-                  {unreadNotifications.length}
-                </span>
-              )}
-            </button>
+          {/* Group of Interactive Action Buttons */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Real-time Notifications Bell */}
+            <div className="relative" ref={notifMenuRef}>
+              <button
+                onClick={() => setIsNotifMenuOpen(!isNotifMenuOpen)}
+                className="relative p-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition-all active:scale-95 flex items-center justify-center min-w-[34px] sm:min-w-[36px] min-h-[34px] sm:min-h-[36px]"
+                title="Notificaciones de reportes y facturación"
+                id="navbar-notification-bell-btn"
+              >
+                <Bell className="w-4 h-4 text-sky-400" />
+                {unreadNotifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white font-black text-[9px] rounded-full flex items-center justify-center animate-pulse shadow-md shadow-rose-900/50">
+                    {unreadNotifications.length}
+                  </span>
+                )}
+              </button>
 
-            {/* Notifications Dropdown Modal */}
-            {isNotifMenuOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-sky-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">
-                      Centro de Notificaciones
-                    </span>
+              {/* Notifications Dropdown Modal - Responsive for Android Portrait & Landscape */}
+              {isNotifMenuOpen && (
+                <div className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 top-28 sm:top-full mt-2 w-auto sm:w-96 max-w-[calc(100vw-1rem)] sm:max-w-md max-h-[80vh] landscape:max-h-[calc(100vh-60px)] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 p-3.5 sm:p-4 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl flex flex-col">
+                  <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-800 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-sky-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        Centro de Notificaciones
+                      </span>
+                    </div>
+                    {unreadNotifications.length > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                        {unreadNotifications.length} nuevas
+                      </span>
+                    )}
                   </div>
-                  {unreadNotifications.length > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                      {unreadNotifications.length} nuevas
-                    </span>
-                  )}
-                </div>
 
-                <div className="mt-3 space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                  {notifications.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-6 text-center">No hay notificaciones en este momento.</p>
-                  ) : (
-                    notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        onClick={() => {
-                          if (onMarkNotificationAsRead) onMarkNotificationAsRead(notif.id);
-                          if (onSelectNotification) onSelectNotification(notif);
-                          if (notif.actionUrl) onTabChange(notif.actionUrl);
-                          setIsNotifMenuOpen(false);
-                        }}
-                        className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
-                          notif.read
-                            ? 'bg-slate-950/40 border-slate-800 text-slate-400'
-                            : 'bg-slate-800/80 border-sky-500/50 text-slate-200 shadow-sm'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="font-bold text-white text-xs">{notif.title}</span>
-                          <span className="text-[10px] text-slate-400">{notif.timestamp}</span>
+                  <div className="mt-2.5 sm:mt-3 space-y-2 max-h-[50vh] sm:max-h-[320px] landscape:max-h-[38vh] overflow-y-auto pr-1 flex-1">
+                    {notifications.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-6 text-center">No hay notificaciones en este momento.</p>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => {
+                            if (onMarkNotificationAsRead) onMarkNotificationAsRead(notif.id);
+                            if (onSelectNotification) onSelectNotification(notif);
+                            if (notif.actionUrl) onTabChange(notif.actionUrl);
+                            setIsNotifMenuOpen(false);
+                          }}
+                          className={`p-2.5 sm:p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                            notif.read
+                              ? 'bg-slate-950/40 border-slate-800 text-slate-400'
+                              : 'bg-slate-800/80 border-sky-500/50 text-slate-200 shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="font-bold text-white text-xs">{notif.title}</span>
+                            <span className="text-[10px] text-slate-400">{notif.timestamp}</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed line-clamp-2">{notif.message}</p>
                         </div>
-                        <p className="text-[11px] leading-relaxed line-clamp-2">{notif.message}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
 
-                <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1 text-emerald-400">
-                    <CheckCheck className="w-3.5 h-3.5" />
-                    Sincronización en vivo
-                  </span>
-                  <button
-                    onClick={() => setIsNotifMenuOpen(false)}
-                    className="text-slate-300 hover:text-white font-medium hover:underline"
-                  >
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Multi-Color Theme Selector Dropdown */}
-          <div className="relative" ref={themeMenuRef}>
-            <button
-              onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white text-xs font-semibold transition-all shadow-sm hover:border-slate-700 active:scale-95"
-              title="Seleccionar paleta y color del tema"
-              id="theme-palette-dropdown-btn"
-            >
-              <span className={`w-3.5 h-3.5 rounded-full ${activeThemeObj.dotBg} shadow-sm`} />
-              <Palette className="w-4 h-4 text-sky-400" />
-              <span className="hidden sm:inline font-medium text-slate-300">
-                Tema: <strong className="text-white">{activeThemeObj.name.split(' ')[0]}</strong>
-              </span>
-              <span className="text-[11px]">{isDarkMode ? '🌙' : '☀️'}</span>
-            </button>
-
-            {/* Dropdown Menu with Multiple Color Themes */}
-            {isThemeMenuOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 p-4 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-sky-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">
-                      Paleta de Temas y Colores
+                  <div className="mt-2.5 pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+                    <span className="flex items-center gap-1 text-emerald-400">
+                      <CheckCheck className="w-3.5 h-3.5" />
+                      Sincronización en vivo
                     </span>
+                    <button
+                      onClick={() => setIsNotifMenuOpen(false)}
+                      className="text-slate-300 hover:text-white font-medium hover:underline px-2 py-1"
+                    >
+                      Cerrar
+                    </button>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Multi-Color Theme Selector Dropdown */}
+            <div className="relative" ref={themeMenuRef}>
+              <button
+                onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white text-xs font-semibold transition-all shadow-sm hover:border-slate-700 active:scale-95 min-h-[34px] sm:min-h-[36px]"
+                title="Seleccionar paleta y color del tema"
+                id="theme-palette-dropdown-btn"
+              >
+                <span className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full ${activeThemeObj.dotBg} shadow-sm shrink-0`} />
+                <Palette className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400 shrink-0" />
+                <span className="hidden xs:inline font-medium text-slate-300 text-[11px] sm:text-xs">
+                  {activeThemeObj.name.split(' ')[0]}
+                </span>
+                <span className="text-[10px] sm:text-[11px]">{isDarkMode ? '🌙' : '☀️'}</span>
+              </button>
+
+              {/* Dropdown Menu with Multiple Color Themes - Responsive Grid for Android */}
+              {isThemeMenuOpen && (
+                <div className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 top-28 sm:top-full mt-2 w-auto sm:w-[420px] max-w-[calc(100vw-1rem)] max-h-[82vh] landscape:max-h-[calc(100vh-60px)] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 p-3.5 sm:p-4 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl flex flex-col">
+                  <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-800 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Palette className="w-4 h-4 text-sky-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        Paleta de Temas y Colores
+                      </span>
+                    </div>
+                    <button
+                      onClick={onToggleDarkMode}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold border border-slate-700 transition-colors"
+                      title="Alternar entre modo claro y oscuro"
+                    >
+                      {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-sky-400" />}
+                      <span>{isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}</span>
+                    </button>
+                  </div>
+
+                  <div className="mt-2.5 sm:mt-3 space-y-3 sm:space-y-4 max-h-[58vh] sm:max-h-[380px] landscape:max-h-[42vh] overflow-y-auto pr-1 flex-1">
+                    {/* Category: Oscuros */}
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                        <Moon className="w-3 h-3 text-sky-400" />
+                        Temas Oscuros de Alta Precisión (Android & Web)
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                        {THEME_OPTIONS.filter((t) => t.category === 'Oscuro').map((theme) => {
+                          const isSelected = currentTheme === theme.id;
+                          return (
+                            <button
+                              key={theme.id}
+                              onClick={() => {
+                                if (onChangeTheme) onChangeTheme(theme.id);
+                                setIsThemeMenuOpen(false);
+                              }}
+                              className={`flex items-start gap-2.5 p-2 sm:p-2.5 rounded-xl text-left border transition-all ${
+                                isSelected
+                                  ? 'bg-slate-800/90 border-sky-500 ring-1 ring-sky-500 shadow-md shadow-sky-950/50'
+                                  : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300'
+                              }`}
+                            >
+                              <span className={`w-4 h-4 rounded-full ${theme.dotBg} shrink-0 mt-0.5 shadow-sm`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                                    {theme.name}
+                                  </span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+                                </div>
+                                <div className="text-[10px] text-slate-400 leading-tight mt-0.5 truncate">
+                                  {theme.badge}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Category: Claros */}
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                        <Sun className="w-3 h-3 text-amber-400" />
+                        Temas Claros Diurnos (Android & Web)
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                        {THEME_OPTIONS.filter((t) => t.category === 'Claro').map((theme) => {
+                          const isSelected = currentTheme === theme.id;
+                          return (
+                            <button
+                              key={theme.id}
+                              onClick={() => {
+                                if (onChangeTheme) onChangeTheme(theme.id);
+                                setIsThemeMenuOpen(false);
+                              }}
+                              className={`flex items-start gap-2.5 p-2 sm:p-2.5 rounded-xl text-left border transition-all ${
+                                isSelected
+                                  ? 'bg-slate-800/90 border-sky-500 ring-1 ring-sky-500 shadow-md shadow-sky-950/50'
+                                  : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300'
+                              }`}
+                            >
+                              <span className={`w-4 h-4 rounded-full ${theme.dotBg} shrink-0 mt-0.5 shadow-sm`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                                    {theme.name}
+                                  </span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+                                </div>
+                                <div className="text-[10px] text-slate-400 leading-tight mt-0.5 truncate">
+                                  {theme.badge}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-sky-400" />
+                      Sincronización Android automática
+                    </span>
+                    <button
+                      onClick={() => setIsThemeMenuOpen(false)}
+                      className="text-slate-300 hover:text-white font-medium hover:underline px-2 py-1"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Admin Profile & Company Settings buttons */}
+            {currentRole === 'admin' && (
+              <div className="hidden lg:flex items-center gap-1.5">
+                {onOpenAdminProfile && (
                   <button
-                    onClick={onToggleDarkMode}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold border border-slate-700 transition-colors"
-                    title="Alternar entre modo claro y oscuro"
+                    onClick={onOpenAdminProfile}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-bold transition-all shadow-sm active:scale-95"
+                    title="Editar Perfil del Administrador"
                   >
-                    {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-sky-400" />}
-                    <span>{isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}</span>
+                    <UserCog className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Perfil Admin</span>
                   </button>
-                </div>
-
-                <div className="mt-3 space-y-4 max-h-[380px] overflow-y-auto pr-1">
-                  {/* Category: Oscuros */}
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                      <Moon className="w-3 h-3 text-sky-400" />
-                      Temas Oscuros de Alta Precisión
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {THEME_OPTIONS.filter((t) => t.category === 'Oscuro').map((theme) => {
-                        const isSelected = currentTheme === theme.id;
-                        return (
-                          <button
-                            key={theme.id}
-                            onClick={() => {
-                              if (onChangeTheme) onChangeTheme(theme.id);
-                              setIsThemeMenuOpen(false);
-                            }}
-                            className={`flex items-start gap-2.5 p-2.5 rounded-xl text-left border transition-all ${
-                              isSelected
-                                ? 'bg-slate-800/90 border-sky-500 ring-1 ring-sky-500 shadow-md shadow-sky-950/50'
-                                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300'
-                            }`}
-                          >
-                            <span className={`w-4 h-4 rounded-full ${theme.dotBg} shrink-0 mt-0.5 shadow-sm`} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
-                                  {theme.name}
-                                </span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                              </div>
-                              <div className="text-[10px] text-slate-400 leading-tight mt-0.5 truncate">
-                                {theme.badge}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Category: Claros */}
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-                      <Sun className="w-3 h-3 text-amber-400" />
-                      Temas Claros Diurnos
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {THEME_OPTIONS.filter((t) => t.category === 'Claro').map((theme) => {
-                        const isSelected = currentTheme === theme.id;
-                        return (
-                          <button
-                            key={theme.id}
-                            onClick={() => {
-                              if (onChangeTheme) onChangeTheme(theme.id);
-                              setIsThemeMenuOpen(false);
-                            }}
-                            className={`flex items-start gap-2.5 p-2.5 rounded-xl text-left border transition-all ${
-                              isSelected
-                                ? 'bg-slate-800/90 border-sky-500 ring-1 ring-sky-500 shadow-md shadow-sky-950/50'
-                                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300'
-                            }`}
-                          >
-                            <span className={`w-4 h-4 rounded-full ${theme.dotBg} shrink-0 mt-0.5 shadow-sm`} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-1">
-                                <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
-                                  {theme.name}
-                                </span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                              </div>
-                              <div className="text-[10px] text-slate-400 leading-tight mt-0.5 truncate">
-                                {theme.badge}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-sky-400" />
-                    Persistencia automática
-                  </span>
+                )}
+                {onOpenCompanySettings && (
                   <button
-                    onClick={() => setIsThemeMenuOpen(false)}
-                    className="text-slate-300 hover:text-white font-medium hover:underline"
+                    onClick={onOpenCompanySettings}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-bold transition-all shadow-sm active:scale-95"
+                    title="Editar Datos y Configuración de la Empresa"
                   >
-                    Cerrar
+                    <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Datos Empresa</span>
                   </button>
-                </div>
+                )}
               </div>
             )}
-          </div>
 
-          {/* Admin Share & Reset History / Clean Mode button */}
-          {currentRole === 'admin' && onOpenShareCleanModal && (
+            {/* Admin Share & Reset History / Clean Mode button */}
+            {currentRole === 'admin' && onOpenShareCleanModal && (
+              <button
+                onClick={onOpenShareCleanModal}
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-800 text-xs font-bold transition-all shadow-sm active:scale-95"
+                title="Compartir enlace limpio sin cuentas demo y gestionar historial en 0"
+              >
+                <Share2 className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden md:inline">Compartir Link Limpio</span>
+              </button>
+            )}
+
+            {/* Logout Button */}
             <button
-              onClick={onOpenShareCleanModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-800 text-xs font-bold transition-all shadow-sm active:scale-95"
-              title="Compartir enlace limpio sin cuentas demo y gestionar historial en 0"
+              onClick={onLogout}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-rose-950/80 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-700/60 text-xs font-bold transition-all min-h-[34px] sm:min-h-[36px]"
+              title="Cerrar sesión y volver a la página de ingreso"
             >
-              <Share2 className="w-3.5 h-3.5 text-sky-400" />
-              <span className="hidden md:inline">Compartir Link Limpio</span>
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden xs:inline">Salir</span>
             </button>
-          )}
-
-          {/* Logout Button */}
-          <button
-            onClick={onLogout}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-rose-950/80 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-700/60 text-xs font-bold transition-all"
-            title="Cerrar sesión y volver a la página de ingreso"
-          >
-            <LogOut className="w-3.5 h-3.5 text-rose-400" />
-            <span>Cerrar Sesión</span>
-          </button>
+          </div>
         </div>
       </div>
 
@@ -428,6 +490,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <Activity className="w-3.5 h-3.5 text-sky-400" />
                   Dashboard General
+                </button>
+
+                <button
+                  onClick={() => onTabChange('visits_calendar')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'visits_calendar'
+                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-sky-400" />
+                  Calendario de Visitas
+                </button>
+
+                <button
+                  onClick={() => onTabChange('warehouse')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'warehouse'
+                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Boxes className="w-3.5 h-3.5 text-emerald-400" />
+                  Bodega & Repuestos
                 </button>
 
                 <button
@@ -525,6 +611,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
 
                 <button
+                  onClick={() => onTabChange('visits_calendar')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'visits_calendar'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-sky-400" />
+                  Calendario de Visitas
+                </button>
+
+                <button
                   onClick={() => onTabChange('tech_report')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     activeTab === 'tech_report'
@@ -533,7 +631,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
                 >
                   <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                  Informe Técnico Digital
+                  Hoja de Reporte Digital
+                </button>
+
+                <button
+                  onClick={() => onTabChange('warehouse')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'warehouse'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Boxes className="w-3.5 h-3.5 text-emerald-400" />
+                  Bodega & Repuestos
                 </button>
 
                 <button
@@ -546,18 +656,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
                   Recaudo en Efectivo
-                </button>
-
-                <button
-                  onClick={() => onTabChange('hydraulic_calc')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                    activeTab === 'hydraulic_calc'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-                >
-                  <Calculator className="w-3.5 h-3.5 text-cyan-400" />
-                  Cálculos Hidráulicos de Campo
                 </button>
               </>
             )}

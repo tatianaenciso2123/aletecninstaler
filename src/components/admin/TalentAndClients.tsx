@@ -92,6 +92,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
     phone: '',
     email: '',
     address: '',
+    jobPosition: 'Técnico Especialista en Bombas y VFD',
+    educationLevel: 'Técnico Laboral / SENA',
     specialty: 'Electrobombas y VFD' as Technician['specialty'],
     conteLicense: '',
     baseSalaryCOP: 3000000,
@@ -114,7 +116,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
     neighborhood: 'Usaquén',
     city: 'Bogotá D.C.',
     contractType: 'PREVENTIVO_GOLD_MENSUAL' as ClientAccount['contractType'],
-    monthlyFeeCOP: 1850000,
+    housingType: 'Conjunto Residencial Cerrado',
+    housingDescription: '',
     username: '',
     password: '',
     avatarUrl: PRESET_CLIENT_AVATARS[0],
@@ -152,6 +155,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
       phone: '',
       email: '',
       address: '',
+      jobPosition: 'Técnico Especialista en Bombas y VFD',
+      educationLevel: 'Técnico Laboral / SENA',
       specialty: 'Electrobombas y VFD',
       conteLicense: `TE-${Math.floor(100000 + Math.random() * 900000)} (CONTE)`,
       baseSalaryCOP: 3000000,
@@ -174,6 +179,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
       phone: tech.phone,
       email: tech.email,
       address: tech.address || 'Calle 100 # 15-20, Bogotá',
+      jobPosition: tech.jobPosition || 'Técnico Especialista en Bombas y VFD',
+      educationLevel: tech.educationLevel || 'Técnico Laboral / SENA',
       specialty: tech.specialty,
       conteLicense: tech.conteLicense,
       baseSalaryCOP: tech.baseSalaryCOP,
@@ -207,6 +214,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
         phone: techForm.phone.trim(),
         email: techForm.email.trim(),
         address: techForm.address.trim(),
+        jobPosition: techForm.jobPosition,
+        educationLevel: techForm.educationLevel,
         specialty: techForm.specialty,
         conteLicense: techForm.conteLicense.trim(),
         baseSalaryCOP: Number(techForm.baseSalaryCOP) || 3000000,
@@ -226,6 +235,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
         phone: techForm.phone.trim(),
         email: techForm.email.trim(),
         address: techForm.address.trim(),
+        jobPosition: techForm.jobPosition,
+        educationLevel: techForm.educationLevel,
         specialty: techForm.specialty,
         conteLicense: techForm.conteLicense.trim() || `TE-${Math.floor(100000 + Math.random() * 900000)}`,
         status: 'DISPONIBLE',
@@ -261,7 +272,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
       neighborhood: 'Usaquén',
       city: 'Bogotá D.C.',
       contractType: 'PREVENTIVO_GOLD_MENSUAL',
-      monthlyFeeCOP: 1850000,
+      housingType: 'Conjunto Residencial Cerrado',
+      housingDescription: '',
       username: '',
       password: `cli${Math.floor(1000 + Math.random() * 9000)}`,
       avatarUrl: PRESET_CLIENT_AVATARS[Math.floor(Math.random() * PRESET_CLIENT_AVATARS.length)],
@@ -285,7 +297,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
       neighborhood: client.neighborhood || 'Usaquén',
       city: client.city || 'Bogotá D.C.',
       contractType: client.contractType,
-      monthlyFeeCOP: client.monthlyFeeCOP,
+      housingType: client.housingType || 'Conjunto Residencial Cerrado',
+      housingDescription: client.housingDescription || '',
       username: client.username || client.email,
       password: client.password || 'cliente123',
       avatarUrl: client.avatarUrl || PRESET_CLIENT_AVATARS[0],
@@ -317,7 +330,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
         neighborhood: clientForm.neighborhood.trim(),
         city: clientForm.city.trim(),
         contractType: clientForm.contractType,
-        monthlyFeeCOP: Number(clientForm.monthlyFeeCOP) || 1500000,
+        housingType: clientForm.housingType,
+        housingDescription: clientForm.housingDescription.trim(),
         username: clientForm.username.trim().toLowerCase(),
         password: clientForm.password.trim(),
         avatarUrl: clientForm.avatarUrl,
@@ -341,7 +355,8 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
         neighborhood: clientForm.neighborhood.trim() || 'Sector Residencial',
         city: clientForm.city.trim() || 'Bogotá D.C.',
         contractType: clientForm.contractType,
-        monthlyFeeCOP: Number(clientForm.monthlyFeeCOP) || 1850000,
+        housingType: clientForm.housingType,
+        housingDescription: clientForm.housingDescription.trim(),
         sanitaryCertificateValidUntil: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         username: clientForm.username.trim().toLowerCase(),
         password: clientForm.password.trim(),
@@ -1052,7 +1067,45 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Especialidad Técnica / Cargo <span className="text-rose-500">*</span>
+                    Cargo en la Empresa <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={techForm.jobPosition}
+                    onChange={(e: any) => setTechForm((prev) => ({ ...prev, jobPosition: e.target.value }))}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
+                    <option value="Técnico Especialista en Bombas y VFD">Técnico Especialista en Bombas y VFD</option>
+                    <option value="Ingeniero de Operaciones Hidráulicas">Ingeniero de Operaciones Hidráulicas</option>
+                    <option value="Técnico Electricista & Tableros CONTE">Técnico Electricista & Tableros CONTE</option>
+                    <option value="Técnico Mecánico de Sistemas Hidroneumáticos">Técnico Mecánico de Sistemas Hidroneumáticos</option>
+                    <option value="Inspector de Redes Contra Incendio RCI">Inspector de Redes Contra Incendio RCI</option>
+                    <option value="Supervisor de Cuadrilla & Mantenimiento">Supervisor de Cuadrilla & Mantenimiento</option>
+                    <option value="Auxiliar Técnico de Mantenimiento">Auxiliar Técnico de Mantenimiento</option>
+                    <option value="Auditor de Calidad y Decreto 1575">Auditor de Calidad y Decreto 1575</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Nivel de Escolaridad / Formación <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={techForm.educationLevel}
+                    onChange={(e: any) => setTechForm((prev) => ({ ...prev, educationLevel: e.target.value }))}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
+                    <option value="Técnico Laboral / SENA">Técnico Laboral / SENA</option>
+                    <option value="Tecnólogo en Electromecánica">Tecnólogo en Electromecánica</option>
+                    <option value="Profesional Universitario / Ingeniería">Profesional Universitario / Ingeniería</option>
+                    <option value="Especialización / Posgrado">Especialización / Posgrado</option>
+                    <option value="Bachiller Técnico">Bachiller Técnico</option>
+                    <option value="Certificación Internacional NFPA/CONTE">Certificación Internacional NFPA/CONTE</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Especialidad Técnica <span className="text-rose-500">*</span>
                   </label>
                   <select
                     value={techForm.specialty}
@@ -1388,14 +1441,33 @@ export const TalentAndClients: React.FC<TalentAndClientsProps> = ({
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Cuota Mensual (COP)
+                    Tipo de Inmueble / Vivienda <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={clientForm.housingType}
+                    onChange={(e: any) => setClientForm((prev) => ({ ...prev, housingType: e.target.value }))}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
+                    <option value="Conjunto Residencial Cerrado">Conjunto Residencial Cerrado</option>
+                    <option value="Edificio Residencial / PH">Edificio Residencial / PH</option>
+                    <option value="Casa Unifamiliar / Condominio">Casa Unifamiliar / Condominio</option>
+                    <option value="Centro Comercial / Empresarial">Centro Comercial / Empresarial</option>
+                    <option value="Parque Industrial / Bodega">Parque Industrial / Bodega</option>
+                    <option value="Clínica / Hospital / Laboratorio">Clínica / Hospital / Laboratorio</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Descripción Específica de Vivienda <span className="text-slate-400 font-normal">(Opcional)</span>
                   </label>
                   <input
-                    type="number"
-                    value={clientForm.monthlyFeeCOP}
-                    onChange={(e) => setClientForm((prev) => ({ ...prev, monthlyFeeCOP: Number(e.target.value) }))}
-                    placeholder="1850000"
-                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-sky-500"
+                    type="text"
+                    value={clientForm.housingDescription}
+                    onChange={(e) => setClientForm((prev) => ({ ...prev, housingDescription: e.target.value }))}
+                    placeholder="Ej. Torre 2 Apto 804, Manzana C Casa 15"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
               </div>
