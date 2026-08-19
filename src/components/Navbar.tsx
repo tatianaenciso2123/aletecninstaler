@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { BrandLogo } from './BrandLogo';
 import { UserRole, ThemeColorId, THEME_OPTIONS, AppNotification } from '../types';
 import { AuthUser } from './auth/LoginPage';
+import { AndroidApkModal } from './common/AndroidApkModal';
 import {
   Building2,
   Wrench,
@@ -34,6 +35,7 @@ import {
   Boxes,
   ShoppingCart,
   UserCog,
+  Smartphone,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -79,6 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isNotifMenuOpen, setIsNotifMenuOpen] = useState(false);
+  const [isAndroidApkModalOpen, setIsAndroidApkModalOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +119,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
+          <button
+            onClick={() => setIsAndroidApkModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/60 text-emerald-300 text-[10px] sm:text-[11px] font-bold transition-transform active:scale-95 shadow-sm"
+            title="Ver estado nativo Android, build.gradle, AndroidManifest y GitHub Actions APK"
+          >
+            <Smartphone className="w-3 h-3 text-emerald-400" />
+            <span>Android APK ✅</span>
+          </button>
+
           <div className="flex items-center gap-1 sm:gap-1.5 text-slate-400">
             <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sky-400 shrink-0" />
             <span className="text-slate-300 hidden xs:inline">Línea 24/7:</span>
@@ -460,6 +472,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
+            {/* Android APK status button for quick access */}
+            <button
+              onClick={() => setIsAndroidApkModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/80 text-xs font-bold transition-all shadow-sm active:scale-95"
+              title="Estado del Proyecto Nativo Android & APK (100% Verde)"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Android APK</span>
+            </button>
+
             {/* Logout Button */}
             <button
               onClick={onLogout}
@@ -585,12 +607,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => onTabChange('predictive_ai')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     activeTab === 'predictive_ai'
-                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold'
+                      ? 'bg-purple-500/25 text-purple-300 border border-purple-500/50 font-bold'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
                   <Cpu className="w-3.5 h-3.5 text-purple-400" />
-                  Predictivo IA
+                  Predictivo IA Multimodal
                 </button>
               </>
             )}
@@ -657,6 +679,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
                   Recaudo en Efectivo
                 </button>
+
+                <button
+                  onClick={() => onTabChange('predictive_ai')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                    activeTab === 'predictive_ai'
+                      ? 'bg-purple-500/25 text-purple-300 border border-purple-500/50 font-bold'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Cpu className="w-3.5 h-3.5 text-purple-400" />
+                  Copiloto & IA Multimodal
+                </button>
               </>
             )}
 
@@ -691,6 +725,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
         </div>
       </div>
+
+      {/* Android Native APK & Repository Checklist Modal */}
+      <AndroidApkModal
+        isOpen={isAndroidApkModalOpen}
+        onClose={() => setIsAndroidApkModalOpen(false)}
+      />
     </header>
   );
 };
